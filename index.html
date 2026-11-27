@@ -118,13 +118,13 @@
                     <div class="h-3.5 w-[1px] bg-slate-700 mx-0.5"></div>
 
                     <button id="btn-today" class="px-2 py-1 text-[11px] sm:text-xs font-semibold bg-indigo-600/25 text-indigo-300 border border-indigo-500/40 rounded-lg hover:bg-indigo-600 hover:text-white transition active:scale-95 whitespace-nowrap">
-                        오늘
-                    </button>
-                </div>
-
-                <!-- 우측: 뷰 전환 (위클리 / 먼슬리 / 한줄일기) & 클라우드 동기화/백업 설정 -->
+                <!-- 우측: 뷰 전환 (데일리 / 위클리 / 먼슬리 / 한줄일기) & 클라우드 동기화/백업 설정 -->
                 <div class="flex items-center gap-1.5 order-2 sm:order-3">
                     <div class="inline-flex bg-slate-800/90 p-0.5 sm:p-1 rounded-xl border border-slate-700/80">
+                        <button id="tab-daily" class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition">
+                            <i data-lucide="sun" class="w-3.5 h-3.5"></i>
+                            <span>데일리</span>
+                        </button>
                         <button id="tab-weekly" class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition">
                             <i data-lucide="columns-3" class="w-3.5 h-3.5"></i>
                             <span>위클리</span>
@@ -178,7 +178,91 @@
 
     <!-- 메인 콘텐츠 영역: 남은 화면 높이를 100% 채우며 바깥 스크롤 없음 -->
     <main class="flex-1 min-h-0 max-w-[1800px] w-full mx-auto px-2 sm:px-5 py-1.5 sm:py-2.5 flex flex-col overflow-hidden">
-        
+
+        <!-- 0. 데일리(일간) 뷰 컨테이너 -->
+        <section id="view-daily" class="hidden flex-1 min-h-0 h-full flex flex-col fade-in overflow-hidden">
+            <div class="shrink-0 mb-1.5 flex flex-wrap items-center justify-between gap-1.5 px-2 py-1 bg-slate-900/90 border border-slate-800 rounded-xl">
+                <div class="flex items-center gap-1.5 min-w-0">
+                    <p id="daily-date-label" class="text-xs sm:text-sm font-bold text-slate-100 truncate"></p>
+                    <span id="daily-today-indicator" class="hidden px-1.5 py-0.5 text-[10px] font-bold bg-indigo-500/25 text-indigo-300 border border-indigo-500/40 rounded-md">오늘</span>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button type="button" id="daily-prev-day" title="이전 날" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition active:scale-95">
+                        <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <input type="date" id="daily-date-picker" aria-label="데일리 날짜 선택"
+                        class="px-2 py-0.5 text-[11px] sm:text-xs font-semibold bg-slate-800 text-slate-100 border border-slate-700 rounded-lg focus:outline-none focus:border-indigo-500 cursor-pointer [color-scheme:dark]">
+                    <button type="button" id="daily-next-day" title="다음 날" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition active:scale-95">
+                        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button type="button" id="daily-go-today" class="px-2 py-0.5 text-[11px] font-semibold bg-indigo-600/25 text-indigo-300 border border-indigo-500/40 rounded-lg hover:bg-indigo-600 hover:text-white transition active:scale-95 whitespace-nowrap">
+                        오늘
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-2 overflow-hidden">
+                <!-- 할 일 칸 -->
+                <div class="min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/90 border border-slate-800 overflow-hidden">
+                    <div class="shrink-0 px-3 py-1.5 bg-slate-800/60 border-b border-slate-800 flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-100">할 일</span>
+                        <span id="daily-todo-count" class="text-[11px] font-semibold text-slate-400">0</span>
+                    </div>
+                    <div id="daily-todo-list" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5"></div>
+                    <form id="daily-todo-form" class="shrink-0 p-2 border-t border-slate-800 flex gap-1.5 bg-slate-900">
+                        <input type="text" id="daily-todo-input" placeholder="오늘 할 일을 입력하세요..." autocomplete="off"
+                            class="flex-1 min-w-0 px-2.5 py-1.5 text-xs bg-slate-800 text-slate-100 placeholder-slate-500 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500">
+                        <button type="submit" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition active:scale-95 flex items-center gap-1 shrink-0">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            <span>추가</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 이벤트 / 메모 칸 -->
+                <div class="min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-sky-950/20 border border-slate-800 overflow-hidden">
+                    <div class="shrink-0 px-3 py-1.5 bg-sky-950/40 border-b border-slate-800 flex items-center justify-between">
+                        <span class="text-xs font-bold text-sky-300">이벤트 / 메모</span>
+                        <span id="daily-event-count" class="text-[11px] font-semibold text-sky-400/80">0</span>
+                    </div>
+                    <div id="daily-event-list" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5"></div>
+                    <form id="daily-event-form" class="shrink-0 p-2 border-t border-slate-800 flex gap-1.5 bg-slate-900">
+                        <input type="text" id="daily-event-input" placeholder="이벤트나 메모를 입력하세요..." autocomplete="off"
+                            class="flex-1 min-w-0 px-2.5 py-1.5 text-xs bg-slate-800 text-sky-200 placeholder-slate-500 border border-slate-700 rounded-xl focus:outline-none focus:border-sky-400">
+                        <button type="submit" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-xl transition active:scale-95 flex items-center gap-1 shrink-0">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            <span>추가</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 한줄일기 내용 칸 -->
+                <div class="min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/90 border border-slate-800 overflow-hidden">
+                    <div class="shrink-0 px-3 py-1.5 bg-slate-800/60 border-b border-slate-800 flex items-center justify-between">
+                        <span class="text-xs font-bold text-indigo-300">한줄일기</span>
+                        <span id="daily-oneline-status" class="text-[10px] font-semibold text-slate-400">연동됨</span>
+                    </div>
+                    <form id="daily-oneline-form" class="flex-1 min-h-0 flex flex-col p-2.5 gap-2 overflow-y-auto">
+                        <div class="shrink-0">
+                            <label class="block text-[11px] font-semibold text-slate-400 mb-1">오늘 기분</label>
+                            <div id="daily-emoji-selector" class="flex items-center gap-1.5 flex-wrap"></div>
+                        </div>
+                        <div class="flex-1 min-h-[72px] flex flex-col">
+                            <label for="daily-oneline-input" class="block text-[11px] font-semibold text-slate-400 mb-1">한줄일기 내용</label>
+                            <textarea id="daily-oneline-input" placeholder="..."
+                                class="flex-1 w-full min-h-[68px] px-3 py-2 text-xs sm:text-sm bg-slate-800/90 text-slate-100 placeholder-slate-500 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-400 resize-none"></textarea>
+                        </div>
+                        <div class="shrink-0 flex justify-end">
+                            <button type="submit" id="daily-oneline-save-btn" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition active:scale-95 flex items-center gap-1.5">
+                                <i data-lucide="check" class="w-3.5 h-3.5 stroke-[2.5]"></i>
+                                <span>저장</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
         <!-- 1. 위클리(주간) 뷰 컨테이너 -->
         <section id="view-weekly" class="flex-1 min-h-0 h-full flex flex-col fade-in overflow-hidden">
             <div class="shrink-0 mb-1 sm:mb-1.5 flex items-center justify-between gap-2 px-0.5">
@@ -207,11 +291,12 @@
 
         <!-- 3. 한줄일기 뷰 컨테이너 -->
         <section id="view-oneline" class="hidden flex-1 min-h-0 h-full flex flex-col fade-in overflow-hidden">
-            <div class="shrink-0 mb-1.5 flex items-center justify-between gap-2 px-1 py-1 bg-slate-900/90 border border-slate-800 rounded-xl">
+            <div class="shrink-0 mb-1.5 flex flex-wrap items-center justify-between gap-1.5 px-1.5 py-1 bg-slate-900/90 border border-slate-800 rounded-xl">
                 <div class="flex items-center gap-1.5 min-w-0">
                     <span class="text-xs sm:text-sm font-bold text-slate-100 truncate" id="oneline-month-label">2026년 11월 한줄일기</span>
-                    <span class="hidden sm:inline text-[11px] text-slate-400">· 할 일/이벤트와 별도 저장</span>
                 </div>
+                <!-- 기분 이모지 필터 바 -->
+                <div id="oneline-emoji-filter" class="flex items-center gap-1 overflow-x-auto max-w-full py-0.5" aria-label="기분 이모지 필터"></div>
                 <div class="flex items-center gap-1 shrink-0">
                     <button type="button" id="oneline-prev-month" title="이전 달" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition active:scale-95">
                         <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
@@ -336,10 +421,13 @@
 
         const STORAGE_KEY = 'my_personal_diary_todos_v2';
         const ONELINE_STORAGE_KEY = 'my_personal_diary_oneline_v1';
+        const ONELINE_EMOJI_STORAGE_KEY = 'my_personal_diary_oneline_emoji_v1';
         const VIEW_STATE_KEY = 'my_personal_diary_view_v2';
         const SYNC_CONFIG_KEY = 'my_personal_diary_sync_cfg_v1';
 
         const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+        const MOOD_EMOJIS = ['❤️', '☀️', '☁️', '🌧️'];
+        const ALL_MOOD_EMOJIS_SET = new Set(MOOD_EMOJIS);
 
         const DateUtils = {
             toDateStr(date) {
@@ -377,12 +465,16 @@
             viewMode: 'weekly',
             currentYear: new Date().getFullYear(),
             currentMonth: new Date().getMonth(),
+            selectedDateStr: '',
             selectedWeekStart: null,
             todayStr: '',
             activeModalDateStr: null,
             modalAddType: 'todo',
             todos: {},
             onelineEntries: {},
+            onelineEmojis: {},
+            onelineFilterEmoji: 'ALL',
+            openEmojiPickerDateStr: null,
             pendingImportData: null,
             updatedAt: 0
         };
@@ -454,6 +546,17 @@
             return result;
         }
 
+        function normalizeOnelineEmojiMap(rawMap) {
+            const result = {};
+            if (!rawMap || typeof rawMap !== 'object') return result;
+            for (const [dateKey, val] of Object.entries(rawMap)) {
+                if (typeof val === 'string' && val.trim().length > 0) {
+                    result[dateKey] = val.trim();
+                }
+            }
+            return result;
+        }
+
         function loadData() {
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
@@ -463,18 +566,32 @@
                     if (parsed.onelineEntries) {
                         state.onelineEntries = normalizeOnelineMap(parsed.onelineEntries);
                     }
+                    if (parsed.onelineEmojis) {
+                        state.onelineEmojis = normalizeOnelineEmojiMap(parsed.onelineEmojis);
+                    }
                     state.updatedAt = parsed.updatedAt || 0;
                 }
                 const savedOneline = localStorage.getItem(ONELINE_STORAGE_KEY);
                 if (savedOneline) {
                     const parsedOneline = JSON.parse(savedOneline);
                     state.onelineEntries = normalizeOnelineMap(parsedOneline.onelineEntries || parsedOneline);
+                    if (parsedOneline.onelineEmojis) {
+                        state.onelineEmojis = normalizeOnelineEmojiMap(parsedOneline.onelineEmojis);
+                    }
                     if (parsedOneline.updatedAt && parsedOneline.updatedAt > state.updatedAt) {
                         state.updatedAt = parsedOneline.updatedAt;
                     }
                 }
+                const savedOnelineEmoji = localStorage.getItem(ONELINE_EMOJI_STORAGE_KEY);
+                if (savedOnelineEmoji) {
+                    const parsedEmoji = JSON.parse(savedOnelineEmoji);
+                    state.onelineEmojis = normalizeOnelineEmojiMap(parsedEmoji.onelineEmojis || parsedEmoji);
+                    if (parsedEmoji.updatedAt && parsedEmoji.updatedAt > state.updatedAt) {
+                        state.updatedAt = parsedEmoji.updatedAt;
+                    }
+                }
                 const savedView = localStorage.getItem(VIEW_STATE_KEY);
-                if (savedView === 'monthly' || savedView === 'weekly' || savedView === 'oneline') {
+                if (savedView === 'monthly' || savedView === 'weekly' || savedView === 'oneline' || savedView === 'daily') {
                     state.viewMode = savedView;
                 }
             } catch (e) {
@@ -487,12 +604,18 @@
             const payload = {
                 todos: state.todos,
                 onelineEntries: state.onelineEntries,
+                onelineEmojis: state.onelineEmojis,
                 updatedAt: state.updatedAt
             };
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
                 localStorage.setItem(ONELINE_STORAGE_KEY, JSON.stringify({
                     onelineEntries: state.onelineEntries,
+                    onelineEmojis: state.onelineEmojis,
+                    updatedAt: state.updatedAt
+                }));
+                localStorage.setItem(ONELINE_EMOJI_STORAGE_KEY, JSON.stringify({
+                    onelineEmojis: state.onelineEmojis,
                     updatedAt: state.updatedAt
                 }));
             } catch (e) {
@@ -539,6 +662,7 @@
                 await setDoc(docRef, {
                     todosJson: JSON.stringify(payload.todos),
                     onelineJson: JSON.stringify(payload.onelineEntries || state.onelineEntries),
+                    onelineEmojiJson: JSON.stringify(payload.onelineEmojis || state.onelineEmojis),
                     updatedAt: payload.updatedAt
                 });
             } catch (e) {
@@ -566,10 +690,11 @@
 
                 firestoreUnsubscribe = onSnapshot(docRef, (snap) => {
                     if (!snap.exists()) {
-                        if (Object.keys(state.todos).length > 0 || Object.keys(state.onelineEntries).length > 0) {
+                        if (Object.keys(state.todos).length > 0 || Object.keys(state.onelineEntries).length > 0 || Object.keys(state.onelineEmojis).length > 0) {
                             pushToFirestore({
                                 todos: state.todos,
                                 onelineEntries: state.onelineEntries,
+                                onelineEmojis: state.onelineEmojis,
                                 updatedAt: Date.now()
                             });
                         }
@@ -585,16 +710,26 @@
                             const parsedOneline = typeof remote.onelineJson === 'string'
                                 ? JSON.parse(remote.onelineJson)
                                 : (remote.onelineEntries || {});
+                            const parsedOnelineEmoji = typeof remote.onelineEmojiJson === 'string'
+                                ? JSON.parse(remote.onelineEmojiJson)
+                                : (remote.onelineEmojis || {});
                             state.todos = normalizeTodosMap(parsedTodos);
                             state.onelineEntries = normalizeOnelineMap(parsedOneline);
+                            state.onelineEmojis = normalizeOnelineEmojiMap(parsedOnelineEmoji);
                             state.updatedAt = remote.updatedAt;
                             localStorage.setItem(STORAGE_KEY, JSON.stringify({
                                 todos: state.todos,
                                 onelineEntries: state.onelineEntries,
+                                onelineEmojis: state.onelineEmojis,
                                 updatedAt: state.updatedAt
                             }));
                             localStorage.setItem(ONELINE_STORAGE_KEY, JSON.stringify({
                                 onelineEntries: state.onelineEntries,
+                                onelineEmojis: state.onelineEmojis,
+                                updatedAt: state.updatedAt
+                            }));
+                            localStorage.setItem(ONELINE_EMOJI_STORAGE_KEY, JSON.stringify({
+                                onelineEmojis: state.onelineEmojis,
                                 updatedAt: state.updatedAt
                             }));
                             renderAll();
@@ -628,6 +763,9 @@
                         if (data.onelineEntries) {
                             state.onelineEntries = normalizeOnelineMap(data.onelineEntries);
                         }
+                        if (data.onelineEmojis) {
+                            state.onelineEmojis = normalizeOnelineEmojiMap(data.onelineEmojis);
+                        }
                         state.updatedAt = data.updatedAt;
                         renderAll();
                         if (state.activeModalDateStr) renderModalTodoList();
@@ -637,13 +775,14 @@
             }
 
             window.addEventListener('storage', (e) => {
-                if ((e.key === STORAGE_KEY || e.key === ONELINE_STORAGE_KEY) && e.newValue) {
+                if ((e.key === STORAGE_KEY || e.key === ONELINE_STORAGE_KEY || e.key === ONELINE_EMOJI_STORAGE_KEY) && e.newValue) {
                     try {
                         const data = JSON.parse(e.newValue);
                         if (data && data.updatedAt > state.updatedAt) {
                             isApplyingRemoteUpdate = true;
                             if (data.todos) state.todos = normalizeTodosMap(data.todos);
                             if (data.onelineEntries) state.onelineEntries = normalizeOnelineMap(data.onelineEntries);
+                            if (data.onelineEmojis) state.onelineEmojis = normalizeOnelineEmojiMap(data.onelineEmojis);
                             state.updatedAt = data.updatedAt;
                             renderAll();
                             if (state.activeModalDateStr) renderModalTodoList();
@@ -654,19 +793,259 @@
             });
 
             const savedCfg = getSyncSettings();
-            if (savedCfg.firebaseConfig) {
+            if (savedCfg && savedCfg.firebaseConfig) {
                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'github-diary-app';
                 await connectFirestoreRealtime(savedCfg.firebaseConfig, appId, savedCfg.roomId);
-            } else if (typeof __firebase_config !== 'undefined') {
-                try {
-                    const envCfg = JSON.parse(__firebase_config);
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'github-diary-app';
-                    await connectFirestoreRealtime(envCfg, appId, savedCfg.roomId || 'default-shared-diary');
-                } catch {
-                    updateSyncBadge(false, '로컬 자동저장');
-                }
             } else {
                 updateSyncBadge(false, '로컬 자동저장');
+            }
+        }
+
+        function saveOnelineEntry(dateStr, text, emoji = null) {
+            const trimmed = String(text || '').trim();
+            if (trimmed.length > 0) {
+                state.onelineEntries[dateStr] = trimmed;
+            } else {
+                delete state.onelineEntries[dateStr];
+            }
+            if (emoji !== null) {
+                const cleanEmoji = String(emoji || '').trim();
+                if (cleanEmoji.length > 0) {
+                    state.onelineEmojis[dateStr] = cleanEmoji;
+                } else {
+                    delete state.onelineEmojis[dateStr];
+                }
+            }
+            saveData();
+            if (state.viewMode === 'oneline') {
+                renderOnelineEmojiFilterBar();
+            }
+            showToast(`${dateStr} 한줄일기가 저장되었습니다.`, 'success');
+        }
+
+        function setOnelineEmoji(dateStr, emoji) {
+            const cleanEmoji = String(emoji || '').trim();
+            if (cleanEmoji.length > 0) {
+                state.onelineEmojis[dateStr] = cleanEmoji;
+            } else {
+                delete state.onelineEmojis[dateStr];
+            }
+            state.openEmojiPickerDateStr = null;
+            saveData();
+            renderAll();
+        }
+        function renderOnelineEmojiFilterBar() {
+            const filterContainer = document.getElementById('oneline-emoji-filter');
+            if (!filterContainer) return;
+
+            const year = state.currentYear;
+            const month = state.currentMonth;
+            const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+
+            const monthUsedEmojis = new Set();
+            for (const [dateKey, em] of Object.entries(state.onelineEmojis)) {
+                if (dateKey.startsWith(monthPrefix) && em) {
+                    monthUsedEmojis.add(em);
+                }
+            }
+
+            const filterCandidates = Array.from(new Set([...MOOD_EMOJIS, ...monthUsedEmojis]));
+            filterContainer.innerHTML = '';
+
+            const allBtn = document.createElement('button');
+            allBtn.type = 'button';
+            allBtn.textContent = '전체';
+            allBtn.className = `px-2 py-0.5 rounded-md text-[11px] font-bold shrink-0 transition ${
+                state.onelineFilterEmoji === 'ALL'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            }`;
+            allBtn.addEventListener('click', () => {
+                state.onelineFilterEmoji = 'ALL';
+                renderOnelineView();
+            });
+            filterContainer.appendChild(allBtn);
+
+            filterCandidates.forEach((em) => {
+                const countInMonth = Object.entries(state.onelineEmojis).filter(
+                    ([k, v]) => k.startsWith(monthPrefix) && v === em
+                ).length;
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.title = `${em} 기분으로 필터링 (${countInMonth}일)`;
+                const isSelected = state.onelineFilterEmoji === em;
+                btn.className = `px-1.5 py-0.5 rounded-md text-xs shrink-0 transition flex items-center gap-0.5 border ${
+                    isSelected
+                        ? 'bg-indigo-600/35 border-indigo-400 text-white ring-1 ring-indigo-400/50'
+                        : countInMonth > 0
+                            ? 'bg-slate-800 border-slate-700 text-slate-100 hover:bg-slate-700'
+                            : 'bg-slate-900/60 border-slate-800/80 text-slate-400 hover:bg-slate-800'
+                }`;
+                btn.innerHTML = `<span>${escapeHTML(em)}</span>${countInMonth > 0 ? `<span class="text-[9px] font-bold text-indigo-300">${countInMonth}</span>` : ''}`;
+                btn.addEventListener('click', () => {
+                    state.onelineFilterEmoji = (state.onelineFilterEmoji === em) ? 'ALL' : em;
+                    renderOnelineView();
+                });
+                filterContainer.appendChild(btn);
+            });
+        }
+
+        function renderOnelineView() {
+            const listContainer = document.getElementById('oneline-list');
+            const monthLabel = document.getElementById('oneline-month-label');
+            const monthPicker = document.getElementById('oneline-month-picker');
+
+            const year = state.currentYear;
+            const month = state.currentMonth;
+            const lastDay = new Date(year, month + 1, 0).getDate();
+
+            monthLabel.textContent = `${year}년 ${month + 1}월 한줄일기`;
+            if (monthPicker) {
+                monthPicker.value = `${year}-${String(month + 1).padStart(2, '0')}`;
+            }
+
+            renderOnelineEmojiFilterBar();
+            listContainer.innerHTML = '';
+
+            let renderedCount = 0;
+
+            for (let day = 1; day <= lastDay; day++) {
+                const dateObj = new Date(year, month, day);
+                const dateStr = DateUtils.toDateStr(dateObj);
+                const dayOfWeek = dateObj.getDay();
+                const isToday = (dateStr === state.todayStr);
+                const existingText = state.onelineEntries[dateStr] || '';
+                const existingEmoji = state.onelineEmojis[dateStr] || '';
+
+                if (state.onelineFilterEmoji !== 'ALL' && existingEmoji !== state.onelineFilterEmoji) {
+                    continue;
+                }
+
+                renderedCount++;
+
+                const row = document.createElement('form');
+                row.className = `relative flex items-center gap-1.5 sm:gap-2 px-2 py-[1px] rounded-md border transition-all ${
+                    isToday
+                        ? 'bg-indigo-950/50 border-2 border-indigo-400 ring-1 ring-indigo-500/40 shadow-sm'
+                        : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
+                }`;
+
+                let dayColor = 'text-slate-400';
+                if (dayOfWeek === 0) dayColor = 'text-rose-400';
+                else if (dayOfWeek === 6) dayColor = 'text-sky-400';
+
+                const dateLabel = document.createElement('div');
+                dateLabel.className = 'w-16 sm:w-20 shrink-0 flex items-center gap-1 select-none';
+                dateLabel.innerHTML = `
+                    <span class="text-xs sm:text-[13px] font-bold ${isToday ? 'text-indigo-300' : 'text-slate-200'}">${month + 1}/${day}</span>
+                    <span class="text-[11px] font-semibold ${dayColor}">(${DAY_NAMES[dayOfWeek]})</span>
+                `;
+
+                // 날짜와 텍스트입력상자 사이의 스크롤 선택형 기분 이모지 칸
+                const emojiSlot = document.createElement('div');
+                emojiSlot.className = 'relative shrink-0 flex items-center';
+
+                const emojiTrigger = document.createElement('button');
+                emojiTrigger.type = 'button';
+                emojiTrigger.title = '기분 이모지 선택 (눌러서 스크롤 목록 열기)';
+                emojiTrigger.className = `w-8 sm:w-9 h-6 rounded-md border text-xs sm:text-sm flex items-center justify-center transition active:scale-95 ${
+                    existingEmoji
+                        ? 'bg-slate-800 border-indigo-500/50 text-white'
+                        : 'bg-slate-800/70 border-slate-700/80 text-slate-500 hover:text-slate-300 hover:border-slate-600'
+                }`;
+                emojiTrigger.textContent = existingEmoji || '🙂';
+
+                const isPickerOpen = (state.openEmojiPickerDateStr === dateStr);
+                const pickerPopover = document.createElement('div');
+                pickerPopover.className = `${isPickerOpen ? 'flex' : 'hidden'} flex-col absolute left-0 top-full mt-1 z-40 w-44 max-h-40 overflow-y-auto bg-slate-800 border border-slate-600 rounded-xl shadow-2xl p-1.5 gap-1`;
+
+                const gridPicker = document.createElement('div');
+                gridPicker.className = 'grid grid-cols-2 gap-1';
+
+                const allChoices = existingEmoji && !ALL_MOOD_EMOJIS_SET.has(existingEmoji)
+                    ? [existingEmoji, ...MOOD_EMOJIS]
+                    : MOOD_EMOJIS;
+
+                allChoices.forEach((em) => {
+                    const optBtn = document.createElement('button');
+                    optBtn.type = 'button';
+                    optBtn.className = `py-1 rounded-lg text-sm flex items-center justify-center transition hover:bg-slate-700 ${
+                        existingEmoji === em ? 'bg-indigo-600/40 ring-1 ring-indigo-400' : ''
+                    }`;
+                    optBtn.textContent = em;
+                    optBtn.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        setOnelineEmoji(dateStr, em);
+                    });
+                    gridPicker.appendChild(optBtn);
+                });
+
+                const clearBtn = document.createElement('button');
+                clearBtn.type = 'button';
+                clearBtn.className = 'w-full py-1 text-[10px] font-semibold text-slate-400 hover:text-rose-300 hover:bg-slate-700/70 rounded-lg border-t border-slate-700/80 transition';
+                clearBtn.textContent = '이모지 지우기';
+                clearBtn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    setOnelineEmoji(dateStr, '');
+                });
+
+                pickerPopover.appendChild(gridPicker);
+                pickerPopover.appendChild(clearBtn);
+
+                emojiTrigger.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    state.openEmojiPickerDateStr = (state.openEmojiPickerDateStr === dateStr) ? null : dateStr;
+                    renderOnelineView();
+                });
+
+                emojiSlot.appendChild(emojiTrigger);
+                emojiSlot.appendChild(pickerPopover);
+
+                const inputWrap = document.createElement('div');
+                inputWrap.className = 'flex-1 min-w-0 flex items-center gap-1 bg-slate-800/90 border border-slate-700/80 rounded-md px-1.5 py-0 focus-within:border-indigo-400 transition';
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = existingText;
+                input.placeholder = '...';
+                input.autocomplete = 'off';
+                input.className = 'flex-1 min-w-0 bg-transparent text-xs sm:text-[13px] text-slate-100 placeholder-slate-500 focus:outline-none py-0 leading-tight';
+
+                const saveBtn = document.createElement('button');
+                saveBtn.type = 'submit';
+                saveBtn.title = '한줄일기 저장';
+                saveBtn.setAttribute('aria-label', `${month + 1}월 ${day}일 한줄일기 저장`);
+                saveBtn.className = 'p-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition active:scale-95 shrink-0 flex items-center justify-center';
+                saveBtn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]"></i>`;
+
+                row.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    saveOnelineEntry(dateStr, input.value, state.onelineEmojis[dateStr] || '');
+                    saveBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+                    saveBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                    setTimeout(() => {
+                        saveBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                        saveBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+                    }, 900);
+                });
+
+                inputWrap.appendChild(input);
+                inputWrap.appendChild(saveBtn);
+
+                row.appendChild(dateLabel);
+                row.appendChild(emojiSlot);
+                row.appendChild(inputWrap);
+
+                listContainer.appendChild(row);
+            }
+
+            if (renderedCount === 0) {
+                listContainer.innerHTML = `
+                    <div class="py-10 text-center">
+                        <p class="text-xs sm:text-sm font-semibold text-slate-400">${escapeHTML(state.onelineFilterEmoji)} 기분으로 기록된 한줄일기가 없습니다.</p>
+                    </div>
+                `;
             }
         }
 
@@ -777,17 +1156,6 @@
             saveData();
             renderAll();
             if (state.activeModalDateStr === dateStr) renderModalTodoList();
-        }
-
-        function saveOnelineEntry(dateStr, text) {
-            const trimmed = String(text || '').trim();
-            if (trimmed.length > 0) {
-                state.onelineEntries[dateStr] = trimmed;
-            } else {
-                delete state.onelineEntries[dateStr];
-            }
-            saveData();
-            showToast(`${dateStr} 한줄일기가 저장되었습니다.`, 'success');
         }
 
         function clearLongPressTimer() {
@@ -973,11 +1341,17 @@
             const yearSelect = document.getElementById('select-year');
             const monthSelect = document.getElementById('select-month');
             const weekIndicator = document.getElementById('week-indicator');
+            const tabDaily = document.getElementById('tab-daily');
             const tabWeekly = document.getElementById('tab-weekly');
             const tabMonthly = document.getElementById('tab-monthly');
             const tabOneline = document.getElementById('tab-oneline');
 
-            if (state.viewMode === 'weekly' && state.selectedWeekStart) {
+            if (state.viewMode === 'daily' && state.selectedDateStr) {
+                const d = DateUtils.parseDateStr(state.selectedDateStr);
+                state.currentYear = d.getFullYear();
+                state.currentMonth = d.getMonth();
+                weekIndicator.classList.add('hidden');
+            } else if (state.viewMode === 'weekly' && state.selectedWeekStart) {
                 const thursday = new Date(state.selectedWeekStart);
                 thursday.setDate(thursday.getDate() + 3);
                 state.currentYear = thursday.getFullYear();
@@ -994,88 +1368,92 @@
             const activeCls = 'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white shadow-sm';
             const inactiveCls = 'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-100';
 
+            tabDaily.className = state.viewMode === 'daily' ? activeCls : inactiveCls;
             tabWeekly.className = state.viewMode === 'weekly' ? activeCls : inactiveCls;
             tabMonthly.className = state.viewMode === 'monthly' ? activeCls : inactiveCls;
             tabOneline.className = state.viewMode === 'oneline' ? activeCls : inactiveCls;
         }
 
-        function renderOnelineView() {
-            const listContainer = document.getElementById('oneline-list');
-            const monthLabel = document.getElementById('oneline-month-label');
-            const monthPicker = document.getElementById('oneline-month-picker');
+        function renderDailyView() {
+            if (!state.selectedDateStr) {
+                state.selectedDateStr = state.todayStr || DateUtils.toDateStr(new Date());
+            }
+            const dateStr = state.selectedDateStr;
+            const isToday = (dateStr === state.todayStr);
 
-            const year = state.currentYear;
-            const month = state.currentMonth;
-            const lastDay = new Date(year, month + 1, 0).getDate();
+            const dateLabel = document.getElementById('daily-date-label');
+            const todayIndicator = document.getElementById('daily-today-indicator');
+            const datePicker = document.getElementById('daily-date-picker');
+            const todoListEl = document.getElementById('daily-todo-list');
+            const eventListEl = document.getElementById('daily-event-list');
+            const todoCountEl = document.getElementById('daily-todo-count');
+            const eventCountEl = document.getElementById('daily-event-count');
+            const emojiSelectorEl = document.getElementById('daily-emoji-selector');
+            const onelineInputEl = document.getElementById('daily-oneline-input');
+            const onelineStatusEl = document.getElementById('daily-oneline-status');
 
-            monthLabel.textContent = `${year}년 ${month + 1}월 한줄일기`;
-            if (monthPicker) {
-                monthPicker.value = `${year}-${String(month + 1).padStart(2, '0')}`;
+            if (dateLabel) dateLabel.textContent = DateUtils.formatKoreanFull(dateStr);
+            if (todayIndicator) {
+                todayIndicator.classList.toggle('hidden', !isToday);
+            }
+            if (datePicker) datePicker.value = dateStr;
+
+            const dayItems = state.todos[dateStr] || [];
+            const todoItems = dayItems.filter(it => it.type !== 'event');
+            const eventItems = dayItems.filter(it => it.type === 'event');
+
+            if (todoCountEl) todoCountEl.textContent = `${todoItems.filter(t => t.completed).length}/${todoItems.length}`;
+            if (eventCountEl) eventCountEl.textContent = `${eventItems.length}`;
+
+            todoListEl.innerHTML = '';
+            if (todoItems.length === 0) {
+                todoListEl.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-600">등록된 할 일이 없습니다.</div>`;
+            } else {
+                todoItems.forEach(item => {
+                    todoListEl.appendChild(createTodoItemElement(dateStr, item, false));
+                });
             }
 
-            listContainer.innerHTML = '';
-
-            for (let day = 1; day <= lastDay; day++) {
-                const dateObj = new Date(year, month, day);
-                const dateStr = DateUtils.toDateStr(dateObj);
-                const dayOfWeek = dateObj.getDay();
-                const isToday = (dateStr === state.todayStr);
-                const existingText = state.onelineEntries[dateStr] || '';
-
-                const row = document.createElement('form');
-                row.className = `flex items-center gap-1.5 sm:gap-2 px-2 py-[1px] rounded-md border transition-all ${
-                    isToday
-                        ? 'bg-indigo-950/50 border-2 border-indigo-400 ring-1 ring-indigo-500/40 shadow-sm'
-                        : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
-                }`;
-
-                let dayColor = 'text-slate-400';
-                if (dayOfWeek === 0) dayColor = 'text-rose-400';
-                else if (dayOfWeek === 6) dayColor = 'text-sky-400';
-
-                const dateLabel = document.createElement('div');
-                dateLabel.className = 'w-16 sm:w-20 shrink-0 flex items-center gap-1 select-none';
-                dateLabel.innerHTML = `
-                    <span class="text-xs sm:text-[13px] font-bold ${isToday ? 'text-indigo-300' : 'text-slate-200'}">${month + 1}/${day}</span>
-                    <span class="text-[11px] font-semibold ${dayColor}">(${DAY_NAMES[dayOfWeek]})</span>
-                `;
-
-                const inputWrap = document.createElement('div');
-                inputWrap.className = 'flex-1 min-w-0 flex items-center gap-1 bg-slate-800/90 border border-slate-700/80 rounded-md px-1.5 py-0 focus-within:border-indigo-400 transition';
-
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.value = existingText;
-                input.placeholder = '...';
-                input.autocomplete = 'off';
-                input.className = 'flex-1 min-w-0 bg-transparent text-xs sm:text-[13px] text-slate-100 placeholder-slate-500 focus:outline-none py-0 leading-tight';
-
-                const saveBtn = document.createElement('button');
-                saveBtn.type = 'submit';
-                saveBtn.title = '한줄일기 저장';
-                saveBtn.setAttribute('aria-label', `${month + 1}월 ${day}일 한줄일기 저장`);
-                saveBtn.className = 'p-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition active:scale-95 shrink-0 flex items-center justify-center';
-                saveBtn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 stroke-[2.5]"></i>`;
-                saveBtn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]"></i>`;
-
-                row.addEventListener('submit', (e) => {
-                    e.preventDefault();
-                    saveOnelineEntry(dateStr, input.value);
-                    saveBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
-                    saveBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
-                    setTimeout(() => {
-                        saveBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
-                        saveBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
-                    }, 900);
+            eventListEl.innerHTML = '';
+            if (eventItems.length === 0) {
+                eventListEl.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-600">등록된 이벤트/메모가 없습니다.</div>`;
+            } else {
+                eventItems.forEach(item => {
+                    eventListEl.appendChild(createTodoItemElement(dateStr, item, false));
                 });
+            }
 
-                inputWrap.appendChild(input);
-                inputWrap.appendChild(saveBtn);
+            const currentEmoji = state.onelineEmojis[dateStr] || '';
+            const currentOneline = state.onelineEntries[dateStr] || '';
 
-                row.appendChild(dateLabel);
-                row.appendChild(inputWrap);
+            if (document.activeElement !== onelineInputEl && onelineInputEl) {
+                onelineInputEl.value = currentOneline;
+            }
+            if (onelineStatusEl) {
+                onelineStatusEl.textContent = (currentEmoji || currentOneline) ? '기록됨' : '비어있음';
+            }
 
-                listContainer.appendChild(row);
+            if (emojiSelectorEl) {
+                emojiSelectorEl.innerHTML = '';
+                const choices = currentEmoji && !ALL_MOOD_EMOJIS_SET.has(currentEmoji)
+                    ? [currentEmoji, ...MOOD_EMOJIS]
+                    : MOOD_EMOJIS;
+
+                choices.forEach((em) => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    const selected = currentEmoji === em;
+                    btn.className = `px-2.5 py-1 rounded-xl text-sm border transition active:scale-95 ${
+                        selected
+                            ? 'bg-indigo-600/35 border-indigo-400 text-white ring-1 ring-indigo-400/50'
+                            : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                    }`;
+                    btn.textContent = em;
+                    btn.addEventListener('click', () => {
+                        setOnelineEmoji(dateStr, selected ? '' : em);
+                    });
+                    emojiSelectorEl.appendChild(btn);
+                });
             }
         }
 
@@ -1257,6 +1635,7 @@
                 const isToday = (dateStr === state.todayStr);
                 const dayOfWeek = cellDate.getDay();
                 const dayItems = state.todos[dateStr] || [];
+                const onelineEmoji = state.onelineEmojis[dateStr] || '';
 
                 const cell = document.createElement('div');
                 let borderAndBgClass = isCurrentMonth
@@ -1281,8 +1660,8 @@
                     ? `<span class="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-indigo-500 text-white font-bold text-[11px] sm:text-xs">${cellDate.getDate()}</span>`
                     : `<span class="text-[11px] sm:text-xs font-bold ${dayColorClass} px-0.5">${cellDate.getDate()}</span>`;
 
-                const todayTag = isToday
-                    ? `<span class="hidden md:inline-block px-1 py-0.2 text-[8px] font-extrabold bg-indigo-500 text-white rounded">TODAY</span>`
+                const onelineEmojiBadge = onelineEmoji
+                    ? `<span class="text-[11px] sm:text-xs leading-none select-none" title="한줄일기 기분: ${escapeHTML(onelineEmoji)}">${escapeHTML(onelineEmoji)}</span>`
                     : '';
 
                 const todoOnly = dayItems.filter(it => it.type !== 'event');
@@ -1292,9 +1671,9 @@
                     : '';
 
                 topRow.innerHTML = `
-                    <div class="flex items-center gap-1">
+                    <div class="flex items-center gap-1 min-w-0">
                         ${dateNumBadge}
-                        ${todayTag}
+                        ${onelineEmojiBadge}
                     </div>
                     ${countBadge}
                 `;
@@ -1543,15 +1922,20 @@
         function renderAll() {
             updateHeaderControls();
 
+            const dailySection = document.getElementById('view-daily');
             const monthlySection = document.getElementById('view-monthly');
             const weeklySection = document.getElementById('view-weekly');
             const onelineSection = document.getElementById('view-oneline');
 
+            dailySection.classList.add('hidden');
             weeklySection.classList.add('hidden');
             monthlySection.classList.add('hidden');
             onelineSection.classList.add('hidden');
 
-            if (state.viewMode === 'weekly') {
+            if (state.viewMode === 'daily') {
+                dailySection.classList.remove('hidden');
+                renderDailyView();
+            } else if (state.viewMode === 'weekly') {
                 weeklySection.classList.remove('hidden');
                 renderWeeklyView();
             } else if (state.viewMode === 'monthly') {
@@ -1581,6 +1965,15 @@
             window.addEventListener('mouseup', handleGlobalPointerUp);
             window.addEventListener('touchend', handleGlobalPointerUp);
             window.addEventListener('touchcancel', handleGlobalPointerUp);
+
+            document.getElementById('tab-daily').addEventListener('click', () => {
+                state.viewMode = 'daily';
+                localStorage.setItem(VIEW_STATE_KEY, 'daily');
+                if (!state.selectedDateStr) {
+                    state.selectedDateStr = state.todayStr || DateUtils.toDateStr(new Date());
+                }
+                renderAll();
+            });
 
             document.getElementById('tab-weekly').addEventListener('click', () => {
                 state.viewMode = 'weekly';
@@ -1648,8 +2041,79 @@
                 renderAll();
             });
 
+            document.getElementById('daily-prev-day').addEventListener('click', () => {
+                const base = DateUtils.parseDateStr(state.selectedDateStr || state.todayStr);
+                base.setDate(base.getDate() - 1);
+                state.selectedDateStr = DateUtils.toDateStr(base);
+                renderAll();
+            });
+
+            document.getElementById('daily-next-day').addEventListener('click', () => {
+                const base = DateUtils.parseDateStr(state.selectedDateStr || state.todayStr);
+                base.setDate(base.getDate() + 1);
+                state.selectedDateStr = DateUtils.toDateStr(base);
+                renderAll();
+            });
+
+            document.getElementById('daily-date-picker').addEventListener('change', (e) => {
+                if (!e.target.value) return;
+                state.selectedDateStr = e.target.value;
+                renderAll();
+            });
+
+            document.getElementById('daily-go-today').addEventListener('click', () => {
+                syncTodayDate(false);
+                state.selectedDateStr = state.todayStr;
+                const now = new Date();
+                state.currentYear = now.getFullYear();
+                state.currentMonth = now.getMonth();
+                renderAll();
+            });
+
+            document.getElementById('daily-todo-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('daily-todo-input');
+                const targetDate = state.selectedDateStr || state.todayStr;
+                if (targetDate && input.value.trim()) {
+                    addItem(targetDate, input.value, 'todo');
+                    input.value = '';
+                }
+            });
+
+            document.getElementById('daily-event-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('daily-event-input');
+                const targetDate = state.selectedDateStr || state.todayStr;
+                if (targetDate && input.value.trim()) {
+                    addItem(targetDate, input.value, 'event');
+                    input.value = '';
+                }
+            });
+
+            document.getElementById('daily-oneline-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('daily-oneline-input');
+                const targetDate = state.selectedDateStr || state.todayStr;
+                if (!targetDate) return;
+                saveOnelineEntry(targetDate, input.value, state.onelineEmojis[targetDate] || '');
+                renderDailyView();
+                const saveBtn = document.getElementById('daily-oneline-save-btn');
+                if (saveBtn) {
+                    saveBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+                    saveBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                    setTimeout(() => {
+                        saveBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                        saveBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+                    }, 900);
+                }
+            });
+
             document.getElementById('btn-prev').addEventListener('click', () => {
-                if (state.viewMode === 'monthly') {
+                if (state.viewMode === 'daily') {
+                    const base = DateUtils.parseDateStr(state.selectedDateStr || state.todayStr);
+                    base.setDate(base.getDate() - 1);
+                    state.selectedDateStr = DateUtils.toDateStr(base);
+                } else if (state.viewMode === 'monthly') {
                     state.currentMonth--;
                     if (state.currentMonth < 0) {
                         state.currentMonth = 11;
@@ -1662,7 +2126,11 @@
             });
 
             document.getElementById('btn-next').addEventListener('click', () => {
-                if (state.viewMode === 'monthly') {
+                if (state.viewMode === 'daily') {
+                    const base = DateUtils.parseDateStr(state.selectedDateStr || state.todayStr);
+                    base.setDate(base.getDate() + 1);
+                    state.selectedDateStr = DateUtils.toDateStr(base);
+                } else if (state.viewMode === 'monthly') {
                     state.currentMonth++;
                     if (state.currentMonth > 11) {
                         state.currentMonth = 0;
@@ -1680,6 +2148,7 @@
                 state.currentMonth = now.getMonth();
                 state.selectedWeekStart = DateUtils.getStartOfWeek(now);
                 syncTodayDate(false);
+                state.selectedDateStr = state.todayStr;
                 renderAll();
                 showToast('오늘 날짜로 이동했습니다.', 'info');
             });
@@ -1717,45 +2186,11 @@
 
             document.addEventListener('click', () => {
                 dataDropdown.classList.add('hidden');
-            });
-
-            document.getElementById('btn-open-sync-modal').addEventListener('click', () => {
-                const cfg = getSyncSettings();
-                document.getElementById('input-sync-room').value = cfg.roomId || '';
-                document.getElementById('input-firebase-config').value = cfg.firebaseConfig ? JSON.stringify(cfg.firebaseConfig, null, 2) : '';
-                document.getElementById('sync-modal').classList.remove('hidden');
-            });
-
-            document.getElementById('btn-close-sync-modal').addEventListener('click', () => {
-                document.getElementById('sync-modal').classList.add('hidden');
-            });
-
-            document.getElementById('btn-save-sync').addEventListener('click', async () => {
-                const roomId = document.getElementById('input-sync-room').value.trim() || 'default-shared-diary';
-                const rawCfg = document.getElementById('input-firebase-config').value.trim();
-                let parsedCfg = null;
-
-                if (rawCfg) {
-                    try {
-                        parsedCfg = parseFirebaseConfigInput(rawCfg);
-                    } catch (e) {
-                        showToast('JSON 형식이 올바르지 않습니다. 중괄호 { ... } 전체를 붙여넣어 주세요.', 'error');
-                        return;
+                if (state.openEmojiPickerDateStr) {
+                    state.openEmojiPickerDateStr = null;
+                    if (state.viewMode === 'oneline') {
+                        renderOnelineView();
                     }
-                }
-
-                localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify({
-                    roomId,
-                    firebaseConfig: parsedCfg
-                }));
-
-                document.getElementById('sync-modal').classList.add('hidden');
-                if (parsedCfg) {
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'github-diary-app';
-                    await connectFirestoreRealtime(parsedCfg, appId, roomId);
-                    showToast('클라우드 실시간 동기화가 연결되었습니다!', 'success');
-                } else {
-                    showToast('동기화 방 코드가 저장되었습니다.', 'info');
                 }
             });
 
@@ -1763,6 +2198,7 @@
                 const exportPayload = {
                     todos: state.todos,
                     onelineEntries: state.onelineEntries,
+                    onelineEmojis: state.onelineEmojis,
                     updatedAt: state.updatedAt || Date.now()
                 };
                 const dataStr = JSON.stringify(exportPayload, null, 2);
@@ -1791,7 +2227,8 @@
                         }
                         state.pendingImportData = {
                             todos: normalizeTodosMap(parsed.todos || parsed),
-                            onelineEntries: normalizeOnelineMap(parsed.onelineEntries || {})
+                            onelineEntries: normalizeOnelineMap(parsed.onelineEntries || {}),
+                            onelineEmojis: normalizeOnelineEmojiMap(parsed.onelineEmojis || {})
                         };
                         document.getElementById('confirm-modal').classList.remove('hidden');
                     } catch (err) {
@@ -1811,6 +2248,7 @@
                 if (state.pendingImportData) {
                     state.todos = state.pendingImportData.todos || {};
                     state.onelineEntries = state.pendingImportData.onelineEntries || {};
+                    state.onelineEmojis = state.pendingImportData.onelineEmojis || {};
                     saveData();
                     renderAll();
                     showToast('데이터가 성공적으로 복원 및 동기화되었습니다!', 'success');
@@ -1823,6 +2261,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             loadData();
             syncTodayDate(true);
+            state.selectedDateStr = state.todayStr;
             state.selectedWeekStart = DateUtils.getStartOfWeek(new Date());
             initDateSelectors();
             initEventListeners();
