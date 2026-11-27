@@ -122,9 +122,8 @@
                     </button>
                 </div>
 
-                <!-- 우측: 뷰 전환 (위클리 / 먼슬리) & 클라우드 동기화/백업 설정 -->
+                <!-- 우측: 뷰 전환 (위클리 / 먼슬리 / 한줄일기) & 클라우드 동기화/백업 설정 -->
                 <div class="flex items-center gap-1.5 order-2 sm:order-3">
-                    <!-- 뷰 전환 토글: 위클리가 기본 첫 번째 -->
                     <div class="inline-flex bg-slate-800/90 p-0.5 sm:p-1 rounded-xl border border-slate-700/80">
                         <button id="tab-weekly" class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition">
                             <i data-lucide="columns-3" class="w-3.5 h-3.5"></i>
@@ -133,6 +132,10 @@
                         <button id="tab-monthly" class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition">
                             <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
                             <span>먼슬리</span>
+                        </button>
+                        <button id="tab-oneline" class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition">
+                            <i data-lucide="notebook-pen" class="w-3.5 h-3.5"></i>
+                            <span>한줄일기</span>
                         </button>
                     </div>
 
@@ -176,7 +179,7 @@
     <!-- 메인 콘텐츠 영역: 남은 화면 높이를 100% 채우며 바깥 스크롤 없음 -->
     <main class="flex-1 min-h-0 max-w-[1800px] w-full mx-auto px-2 sm:px-5 py-1.5 sm:py-2.5 flex flex-col overflow-hidden">
         
-        <!-- 1. 위클리(주간) 뷰 컨테이너 (기본 첫 페이지, 바깥 스크롤 없이 100% 높이 맞춤) -->
+        <!-- 1. 위클리(주간) 뷰 컨테이너 -->
         <section id="view-weekly" class="flex-1 min-h-0 h-full flex flex-col fade-in overflow-hidden">
             <div class="shrink-0 mb-1 sm:mb-1.5 flex items-center justify-between gap-2 px-0.5">
                 <p id="weekly-range-label" class="text-[11px] sm:text-sm font-bold text-slate-200 truncate"></p>
@@ -185,15 +188,11 @@
                     <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-sky-400"></span>이벤트/메모</span>
                 </div>
             </div>
-            <!-- 7열 가로 균등 분할 그리드 (어떤 화면 크기에서도 전체 세로 길이가 모두 표시되도록 고정) -->
-            <div id="weekly-grid" class="flex-1 min-h-0 h-full grid grid-cols-7 grid-rows-1 gap-1 sm:gap-2 overflow-hidden">
-                <!-- JavaScript로 7일 주간 컬럼 동적 생성 -->
-            </div>
+            <div id="weekly-grid" class="flex-1 min-h-0 h-full grid grid-cols-7 grid-rows-1 gap-1 sm:gap-2 overflow-hidden"></div>
         </section>
 
-        <!-- 2. 먼슬리(월간) 뷰 컨테이너 (바깥 스크롤 없이 100% 높이 맞춤) -->
+        <!-- 2. 먼슬리(월간) 뷰 컨테이너 -->
         <section id="view-monthly" class="hidden flex-1 min-h-0 h-full flex flex-col fade-in overflow-hidden">
-            <!-- 요일 헤더 (일~토) -->
             <div class="shrink-0 grid grid-cols-7 gap-1 sm:gap-1.5 mb-1 text-center">
                 <div class="py-0.5 text-[11px] sm:text-xs font-bold text-rose-400">일</div>
                 <div class="py-0.5 text-[11px] sm:text-xs font-semibold text-slate-400">월</div>
@@ -203,11 +202,31 @@
                 <div class="py-0.5 text-[11px] sm:text-xs font-semibold text-slate-400">금</div>
                 <div class="py-0.5 text-[11px] sm:text-xs font-bold text-sky-400">토</div>
             </div>
+            <div id="monthly-grid" class="flex-1 min-h-0 grid grid-cols-7 gap-1 sm:gap-1.5 overflow-hidden"></div>
+        </section>
 
-            <!-- 달력 날짜 그리드: 남은 높이에 맞춰 행 높이 자동 분할 -->
-            <div id="monthly-grid" class="flex-1 min-h-0 grid grid-cols-7 gap-1 sm:gap-1.5 overflow-hidden">
-                <!-- JavaScript로 날짜 셀 동적 생성 -->
+        <!-- 3. 한줄일기 뷰 컨테이너 -->
+        <section id="view-oneline" class="hidden flex-1 min-h-0 h-full flex flex-col fade-in overflow-hidden">
+            <div class="shrink-0 mb-1.5 flex items-center justify-between gap-2 px-1 py-1 bg-slate-900/90 border border-slate-800 rounded-xl">
+                <div class="flex items-center gap-1.5 min-w-0">
+                    <span class="text-xs sm:text-sm font-bold text-slate-100 truncate" id="oneline-month-label">2026년 11월 한줄일기</span>
+                    <span class="hidden sm:inline text-[11px] text-slate-400">· 할 일/이벤트와 별도 저장</span>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                    <button type="button" id="oneline-prev-month" title="이전 달" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition active:scale-95">
+                        <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <input type="month" id="oneline-month-picker" aria-label="원하는 월 선택"
+                        class="px-2 py-0.5 text-[11px] sm:text-xs font-semibold bg-slate-800 text-slate-100 border border-slate-700 rounded-lg focus:outline-none focus:border-indigo-500 cursor-pointer [color-scheme:dark]">
+                    <button type="button" id="oneline-next-month" title="다음 달" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition active:scale-95">
+                        <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                    <button type="button" id="oneline-go-today-month" class="px-2 py-0.5 text-[11px] font-semibold bg-indigo-600/25 text-indigo-300 border border-indigo-500/40 rounded-lg hover:bg-indigo-600 hover:text-white transition active:scale-95 whitespace-nowrap">
+                        이번 달
+                    </button>
+                </div>
             </div>
+            <div id="oneline-list" class="flex-1 min-h-0 overflow-y-auto space-y-[1px] py-0.5 pr-0.5"></div>
         </section>
 
     </main>
@@ -215,7 +234,6 @@
     <!-- 먼슬리 날짜 클릭 시 열리는 할 일 & 이벤트/메모 통합 관리 모달 -->
     <div id="day-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs fade-in">
         <div class="bg-slate-900 w-full max-w-md rounded-2xl shadow-2xl border border-slate-700/90 overflow-hidden flex flex-col max-h-[88vh]">
-            <!-- 모달 헤더 -->
             <div class="px-4 py-3 bg-slate-800/90 border-b border-slate-700/80 flex items-center justify-between shrink-0">
                 <div>
                     <div class="flex items-center gap-2">
@@ -229,7 +247,6 @@
                 </button>
             </div>
 
-            <!-- 카테고리 선택 + 입력 폼 -->
             <form id="modal-todo-form" class="p-3 border-b border-slate-800 bg-slate-900 flex flex-col gap-2 shrink-0">
                 <div class="flex items-center gap-1.5">
                     <button type="button" id="modal-type-todo" class="flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold border transition bg-slate-100 text-slate-900 border-white">
@@ -249,10 +266,7 @@
                 </div>
             </form>
 
-            <!-- 항목 목록 리스트 -->
-            <div id="modal-todo-list" class="p-3 overflow-y-auto flex-1 space-y-2 min-h-[180px] bg-slate-900/60">
-                <!-- 동적 생성 -->
-            </div>
+            <div id="modal-todo-list" class="p-3 overflow-y-auto flex-1 space-y-2 min-h-[180px] bg-slate-900/60"></div>
         </div>
     </div>
 
@@ -293,10 +307,10 @@
         </div>
     </div>
 
-    <!-- 알림 토스트 메시지 (alert 대체) -->
+    <!-- 알림 토스트 메시지 -->
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- 복원 확인 커스텀 모달 (confirm 대체) -->
+    <!-- 복원 확인 커스텀 모달 -->
     <div id="confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
         <div class="bg-slate-900 w-full max-w-sm rounded-2xl shadow-2xl border border-slate-700 p-5 fade-in">
             <div class="flex items-center gap-3 text-amber-400 mb-3">
@@ -320,13 +334,8 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        /**
-         * ============================================================================
-         * GPT Diary - 위클리 기본 뷰, 무스크롤 반응형, 실시간 동기화
-         * ============================================================================
-         */
-
         const STORAGE_KEY = 'my_personal_diary_todos_v2';
+        const ONELINE_STORAGE_KEY = 'my_personal_diary_oneline_v1';
         const VIEW_STATE_KEY = 'my_personal_diary_view_v2';
         const SYNC_CONFIG_KEY = 'my_personal_diary_sync_cfg_v1';
 
@@ -349,7 +358,6 @@
                 return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY_NAMES[d.getDay()]})`;
             },
             getStartOfWeek(date) {
-                // 월요일 시작(월~일) 기준 주 시작일 반환
                 const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
                 const day = d.getDay();
                 const diff = day === 0 ? -6 : 1 - day;
@@ -365,32 +373,32 @@
             }
         };
 
-        // 애플리케이션 전역 상태 (기본 첫 화면: 'weekly')
         let state = {
-            viewMode: 'weekly', // 기본 첫 페이지가 위클리
+            viewMode: 'weekly',
             currentYear: new Date().getFullYear(),
             currentMonth: new Date().getMonth(),
             selectedWeekStart: null,
             todayStr: '',
             activeModalDateStr: null,
-            modalAddType: 'todo', // 'todo' 또는 'event'
-            todos: {}, // { 'YYYY-MM-DD': [ { id, text, type: 'todo'|'event', completed, createdAt } ] }
+            modalAddType: 'todo',
+            todos: {},
+            onelineEntries: {},
             pendingImportData: null,
             updatedAt: 0
         };
 
-        // 실시간 동기화 관련 변수
         let firestoreDb = null;
         let firestoreUnsubscribe = null;
         let isApplyingRemoteUpdate = false;
         const broadcastChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('my_diary_realtime_sync') : null;
 
-        // 길게 누르기(롱프레스)로 순서 변경하기 위한 상태
         const reorderState = {
             timerId: null,
             activeItemId: null,
             activeDateStr: null,
+            startX: 0,
             startY: 0,
+            ghostOffsetY: 0,
             isDragging: false,
             ghostEl: null,
             containerEl: null,
@@ -398,28 +406,19 @@
             targetIndex: -1
         };
 
-        /**
-         * 사용자 입력에서 JSON/JS 객체 형태의 Firebase 설정 문자열 파싱
-         */
         function parseFirebaseConfigInput(rawInput) {
             if (!rawInput) return null;
             let text = rawInput.trim();
-
-            // 앞부분의 변수 선언 제거 (예: const firebaseConfig = { ... };)
             text = text.replace(/^(?:const|let|var)\s+[a-zA-Z0-9_$]+\s*=\s*/i, '');
-
-            // 첫 번째 '{'부터 마지막 '}'까지만 추출
             const startIdx = text.indexOf('{');
             const endIdx = text.lastIndexOf('}');
             if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
                 throw new Error('중괄호 { ... } 범위를 찾을 수 없습니다.');
             }
             text = text.slice(startIdx, endIdx + 1);
-
             try {
                 return JSON.parse(text);
             } catch {
-                // 따옴표 없는 키(예: apiKey: "...")나 후행 쉼표(, })가 섞인 경우 보정 시도
                 const normalized = text
                     .replace(/([{,]\s*)([a-zA-Z0-9_$]+)\s*:/g, '$1"$2":')
                     .replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_, inner) => `"${inner.replace(/"/g, '\\"')}"`)
@@ -428,9 +427,6 @@
             }
         }
 
-        /**
-         * 데이터 정규화 및 로컬/실시간 동기화 관리
-         */
         function normalizeTodosMap(rawMap) {
             const result = {};
             if (!rawMap || typeof rawMap !== 'object') return result;
@@ -447,16 +443,38 @@
             return result;
         }
 
+        function normalizeOnelineMap(rawMap) {
+            const result = {};
+            if (!rawMap || typeof rawMap !== 'object') return result;
+            for (const [dateKey, val] of Object.entries(rawMap)) {
+                if (typeof val === 'string' && val.trim().length > 0) {
+                    result[dateKey] = val;
+                }
+            }
+            return result;
+        }
+
         function loadData() {
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     state.todos = normalizeTodosMap(parsed.todos || parsed);
+                    if (parsed.onelineEntries) {
+                        state.onelineEntries = normalizeOnelineMap(parsed.onelineEntries);
+                    }
                     state.updatedAt = parsed.updatedAt || 0;
                 }
+                const savedOneline = localStorage.getItem(ONELINE_STORAGE_KEY);
+                if (savedOneline) {
+                    const parsedOneline = JSON.parse(savedOneline);
+                    state.onelineEntries = normalizeOnelineMap(parsedOneline.onelineEntries || parsedOneline);
+                    if (parsedOneline.updatedAt && parsedOneline.updatedAt > state.updatedAt) {
+                        state.updatedAt = parsedOneline.updatedAt;
+                    }
+                }
                 const savedView = localStorage.getItem(VIEW_STATE_KEY);
-                if (savedView === 'monthly' || savedView === 'weekly') {
+                if (savedView === 'monthly' || savedView === 'weekly' || savedView === 'oneline') {
                     state.viewMode = savedView;
                 }
             } catch (e) {
@@ -468,20 +486,23 @@
             state.updatedAt = Date.now();
             const payload = {
                 todos: state.todos,
+                onelineEntries: state.onelineEntries,
                 updatedAt: state.updatedAt
             };
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+                localStorage.setItem(ONELINE_STORAGE_KEY, JSON.stringify({
+                    onelineEntries: state.onelineEntries,
+                    updatedAt: state.updatedAt
+                }));
             } catch (e) {
                 console.error('로컬 저장 오류:', e);
             }
 
-            // 같은 기기 내 다른 브라우저 탭에 즉시 전파
             if (broadcastChannel && !isApplyingRemoteUpdate) {
                 broadcastChannel.postMessage(payload);
             }
 
-            // 클라우드(Firestore) 연결 시 실시간 자동 업로드
             if (firestoreDb && !isApplyingRemoteUpdate) {
                 pushToFirestore(payload);
             }
@@ -517,6 +538,7 @@
                 const docRef = doc(firestoreDb, 'artifacts', appId, 'public', 'data', 'diaries', roomId);
                 await setDoc(docRef, {
                     todosJson: JSON.stringify(payload.todos),
+                    onelineJson: JSON.stringify(payload.onelineEntries || state.onelineEntries),
                     updatedAt: payload.updatedAt
                 });
             } catch (e) {
@@ -544,8 +566,12 @@
 
                 firestoreUnsubscribe = onSnapshot(docRef, (snap) => {
                     if (!snap.exists()) {
-                        if (Object.keys(state.todos).length > 0) {
-                            pushToFirestore({ todos: state.todos, updatedAt: Date.now() });
+                        if (Object.keys(state.todos).length > 0 || Object.keys(state.onelineEntries).length > 0) {
+                            pushToFirestore({
+                                todos: state.todos,
+                                onelineEntries: state.onelineEntries,
+                                updatedAt: Date.now()
+                            });
                         }
                         return;
                     }
@@ -556,10 +582,19 @@
                             const parsedTodos = typeof remote.todosJson === 'string'
                                 ? JSON.parse(remote.todosJson)
                                 : (remote.todos || {});
+                            const parsedOneline = typeof remote.onelineJson === 'string'
+                                ? JSON.parse(remote.onelineJson)
+                                : (remote.onelineEntries || {});
                             state.todos = normalizeTodosMap(parsedTodos);
+                            state.onelineEntries = normalizeOnelineMap(parsedOneline);
                             state.updatedAt = remote.updatedAt;
                             localStorage.setItem(STORAGE_KEY, JSON.stringify({
                                 todos: state.todos,
+                                onelineEntries: state.onelineEntries,
+                                updatedAt: state.updatedAt
+                            }));
+                            localStorage.setItem(ONELINE_STORAGE_KEY, JSON.stringify({
+                                onelineEntries: state.onelineEntries,
                                 updatedAt: state.updatedAt
                             }));
                             renderAll();
@@ -590,6 +625,9 @@
                     if (data && data.updatedAt > state.updatedAt) {
                         isApplyingRemoteUpdate = true;
                         state.todos = normalizeTodosMap(data.todos);
+                        if (data.onelineEntries) {
+                            state.onelineEntries = normalizeOnelineMap(data.onelineEntries);
+                        }
                         state.updatedAt = data.updatedAt;
                         renderAll();
                         if (state.activeModalDateStr) renderModalTodoList();
@@ -599,12 +637,13 @@
             }
 
             window.addEventListener('storage', (e) => {
-                if (e.key === STORAGE_KEY && e.newValue) {
+                if ((e.key === STORAGE_KEY || e.key === ONELINE_STORAGE_KEY) && e.newValue) {
                     try {
                         const data = JSON.parse(e.newValue);
                         if (data && data.updatedAt > state.updatedAt) {
                             isApplyingRemoteUpdate = true;
-                            state.todos = normalizeTodosMap(data.todos);
+                            if (data.todos) state.todos = normalizeTodosMap(data.todos);
+                            if (data.onelineEntries) state.onelineEntries = normalizeOnelineMap(data.onelineEntries);
                             state.updatedAt = data.updatedAt;
                             renderAll();
                             if (state.activeModalDateStr) renderModalTodoList();
@@ -631,9 +670,6 @@
             }
         }
 
-        /**
-         * 토스트 알림 메시지 (alert 대체)
-         */
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             if (!container) return;
@@ -653,9 +689,6 @@
             }, 2600);
         }
 
-        /**
-         * 자정(00:00) 자동 오늘 날짜 갱신 감시기
-         */
         function syncTodayDate(isInitial = false) {
             const now = new Date();
             const newTodayStr = DateUtils.toDateStr(now);
@@ -680,9 +713,6 @@
             }, 15000);
         }
 
-        /**
-         * CRUD 작업 (할 일 및 이벤트/메모 추가, 완료 토글, 수정, 삭제)
-         */
         function addItem(dateStr, text, type = 'todo') {
             const trimmed = text.trim();
             if (!trimmed) return;
@@ -735,26 +765,29 @@
             if (state.activeModalDateStr === dateStr) renderModalTodoList();
         }
 
-        /**
-         * 길게 눌러 순서 변경: state.todos[dateStr] 내에서 itemId를 newIndex 위치로 이동
-         */
-        function reorderTodoItem(dateStr, itemId, newIndex) {
+        function reorderTodoItem(dateStr, itemId, newActualIndex) {
             const list = state.todos[dateStr];
-            if (!Array.isArray(list) || list.length < 2) return;
-
-            const oldIndex = list.findIndex(t => t.id === itemId);
-            if (oldIndex === -1) return;
-
-            const clampedIndex = Math.max(0, Math.min(list.length - 1, newIndex));
-            if (oldIndex === clampedIndex) return;
-
-            const [movedItem] = list.splice(oldIndex, 1);
+            if (!list) return;
+            const currentIndex = list.findIndex(t => t.id === itemId);
+            if (currentIndex === -1) return;
+            const clampedIndex = Math.max(0, Math.min(list.length - 1, newActualIndex));
+            if (currentIndex === clampedIndex) return;
+            const [movedItem] = list.splice(currentIndex, 1);
             list.splice(clampedIndex, 0, movedItem);
-
             saveData();
             renderAll();
             if (state.activeModalDateStr === dateStr) renderModalTodoList();
-            showToast('항목 순서가 변경되었습니다.', 'info');
+        }
+
+        function saveOnelineEntry(dateStr, text) {
+            const trimmed = String(text || '').trim();
+            if (trimmed.length > 0) {
+                state.onelineEntries[dateStr] = trimmed;
+            } else {
+                delete state.onelineEntries[dateStr];
+            }
+            saveData();
+            showToast(`${dateStr} 한줄일기가 저장되었습니다.`, 'success');
         }
 
         function clearLongPressTimer() {
@@ -836,6 +869,7 @@
             ghost.style.top = `${rect.top}px`;
             document.body.appendChild(ghost);
             reorderState.ghostEl = ghost;
+            reorderState.startX = startX;
             reorderState.startY = startY;
             reorderState.ghostOffsetY = startY - rect.top;
 
@@ -895,9 +929,6 @@
             }
         }
 
-        /**
-         * 상단 연/월 셀렉터 및 헤더 UI 업데이트
-         */
         function initDateSelectors() {
             const yearSelect = document.getElementById('select-year');
             const monthSelect = document.getElementById('select-month');
@@ -944,6 +975,7 @@
             const weekIndicator = document.getElementById('week-indicator');
             const tabWeekly = document.getElementById('tab-weekly');
             const tabMonthly = document.getElementById('tab-monthly');
+            const tabOneline = document.getElementById('tab-oneline');
 
             if (state.viewMode === 'weekly' && state.selectedWeekStart) {
                 const thursday = new Date(state.selectedWeekStart);
@@ -959,20 +991,94 @@
             yearSelect.value = state.currentYear;
             monthSelect.value = state.currentMonth;
 
-            if (state.viewMode === 'weekly') {
-                tabWeekly.className = 'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white shadow-sm';
-                tabMonthly.className = 'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-100';
-            } else {
-                tabMonthly.className = 'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white shadow-sm';
-                tabWeekly.className = 'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-100';
+            const activeCls = 'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition bg-indigo-600 text-white shadow-sm';
+            const inactiveCls = 'flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition text-slate-400 hover:text-slate-100';
+
+            tabWeekly.className = state.viewMode === 'weekly' ? activeCls : inactiveCls;
+            tabMonthly.className = state.viewMode === 'monthly' ? activeCls : inactiveCls;
+            tabOneline.className = state.viewMode === 'oneline' ? activeCls : inactiveCls;
+        }
+
+        function renderOnelineView() {
+            const listContainer = document.getElementById('oneline-list');
+            const monthLabel = document.getElementById('oneline-month-label');
+            const monthPicker = document.getElementById('oneline-month-picker');
+
+            const year = state.currentYear;
+            const month = state.currentMonth;
+            const lastDay = new Date(year, month + 1, 0).getDate();
+
+            monthLabel.textContent = `${year}년 ${month + 1}월 한줄일기`;
+            if (monthPicker) {
+                monthPicker.value = `${year}-${String(month + 1).padStart(2, '0')}`;
+            }
+
+            listContainer.innerHTML = '';
+
+            for (let day = 1; day <= lastDay; day++) {
+                const dateObj = new Date(year, month, day);
+                const dateStr = DateUtils.toDateStr(dateObj);
+                const dayOfWeek = dateObj.getDay();
+                const isToday = (dateStr === state.todayStr);
+                const existingText = state.onelineEntries[dateStr] || '';
+
+                const row = document.createElement('form');
+                row.className = `flex items-center gap-1.5 sm:gap-2 px-2 py-[1px] rounded-md border transition-all ${
+                    isToday
+                        ? 'bg-indigo-950/50 border-2 border-indigo-400 ring-1 ring-indigo-500/40 shadow-sm'
+                        : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
+                }`;
+
+                let dayColor = 'text-slate-400';
+                if (dayOfWeek === 0) dayColor = 'text-rose-400';
+                else if (dayOfWeek === 6) dayColor = 'text-sky-400';
+
+                const dateLabel = document.createElement('div');
+                dateLabel.className = 'w-16 sm:w-20 shrink-0 flex items-center gap-1 select-none';
+                dateLabel.innerHTML = `
+                    <span class="text-xs sm:text-[13px] font-bold ${isToday ? 'text-indigo-300' : 'text-slate-200'}">${month + 1}/${day}</span>
+                    <span class="text-[11px] font-semibold ${dayColor}">(${DAY_NAMES[dayOfWeek]})</span>
+                `;
+
+                const inputWrap = document.createElement('div');
+                inputWrap.className = 'flex-1 min-w-0 flex items-center gap-1 bg-slate-800/90 border border-slate-700/80 rounded-md px-1.5 py-0 focus-within:border-indigo-400 transition';
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = existingText;
+                input.placeholder = '...';
+                input.autocomplete = 'off';
+                input.className = 'flex-1 min-w-0 bg-transparent text-xs sm:text-[13px] text-slate-100 placeholder-slate-500 focus:outline-none py-0 leading-tight';
+
+                const saveBtn = document.createElement('button');
+                saveBtn.type = 'submit';
+                saveBtn.title = '한줄일기 저장';
+                saveBtn.setAttribute('aria-label', `${month + 1}월 ${day}일 한줄일기 저장`);
+                saveBtn.className = 'p-0.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white transition active:scale-95 shrink-0 flex items-center justify-center';
+                saveBtn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 stroke-[2.5]"></i>`;
+                saveBtn.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[2.5]"></i>`;
+
+                row.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    saveOnelineEntry(dateStr, input.value);
+                    saveBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+                    saveBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+                    setTimeout(() => {
+                        saveBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+                        saveBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+                    }, 900);
+                });
+
+                inputWrap.appendChild(input);
+                inputWrap.appendChild(saveBtn);
+
+                row.appendChild(dateLabel);
+                row.appendChild(inputWrap);
+
+                listContainer.appendChild(row);
             }
         }
 
-        /**
-         * ============================================================================
-         * 1. 위클리(주간) 뷰 렌더링 - 월요일 시작(월~일) 가로 7열
-         * ============================================================================
-         */
         function renderWeeklyView() {
             const grid = document.getElementById('weekly-grid');
             const rangeLabel = document.getElementById('weekly-range-label');
@@ -1111,11 +1217,6 @@
             }
         }
 
-        /**
-         * ============================================================================
-         * 2. 먼슬리(월간) 달력 렌더링
-         * ============================================================================
-         */
         function renderMonthlyView() {
             const grid = document.getElementById('monthly-grid');
             grid.innerHTML = '';
@@ -1237,9 +1338,6 @@
             }
         }
 
-        /**
-         * 공통 아이템 DOM 생성 함수 (위클리 카드 내부 & 상세 모달 공용)
-         */
         function createTodoItemElement(dateStr, item, compact = false) {
             const isEvent = item.type === 'event';
             const row = document.createElement('div');
@@ -1365,11 +1463,6 @@
             return row;
         }
 
-        /**
-         * ============================================================================
-         * 3. 먼슬리 상세 모달 제어
-         * ============================================================================
-         */
         function setModalAddType(type) {
             state.modalAddType = type;
             const btnTodo = document.getElementById('modal-type-todo');
@@ -1447,25 +1540,26 @@
             lucide.createIcons();
         }
 
-        /**
-         * ============================================================================
-         * 4. 전체 화면 렌더링 통합 함수
-         * ============================================================================
-         */
         function renderAll() {
             updateHeaderControls();
 
             const monthlySection = document.getElementById('view-monthly');
             const weeklySection = document.getElementById('view-weekly');
+            const onelineSection = document.getElementById('view-oneline');
+
+            weeklySection.classList.add('hidden');
+            monthlySection.classList.add('hidden');
+            onelineSection.classList.add('hidden');
 
             if (state.viewMode === 'weekly') {
                 weeklySection.classList.remove('hidden');
-                monthlySection.classList.add('hidden');
                 renderWeeklyView();
-            } else {
-                weeklySection.classList.add('hidden');
+            } else if (state.viewMode === 'monthly') {
                 monthlySection.classList.remove('hidden');
                 renderMonthlyView();
+            } else if (state.viewMode === 'oneline') {
+                onelineSection.classList.remove('hidden');
+                renderOnelineView();
             }
 
             lucide.createIcons();
@@ -1481,11 +1575,6 @@
             }[tag]));
         }
 
-        /**
-         * ============================================================================
-         * 5. 이벤트 리스너 바인딩 및 초기화
-         * ============================================================================
-         */
         function initEventListeners() {
             window.addEventListener('mousemove', handleGlobalPointerMove);
             window.addEventListener('touchmove', handleGlobalPointerMove, { passive: false });
@@ -1512,6 +1601,50 @@
             document.getElementById('tab-monthly').addEventListener('click', () => {
                 state.viewMode = 'monthly';
                 localStorage.setItem(VIEW_STATE_KEY, 'monthly');
+                renderAll();
+            });
+
+            document.getElementById('tab-oneline').addEventListener('click', () => {
+                state.viewMode = 'oneline';
+                localStorage.setItem(VIEW_STATE_KEY, 'oneline');
+                renderAll();
+            });
+
+            document.getElementById('oneline-prev-month').addEventListener('click', () => {
+                state.currentMonth--;
+                if (state.currentMonth < 0) {
+                    state.currentMonth = 11;
+                    state.currentYear--;
+                }
+                renderAll();
+            });
+
+            document.getElementById('oneline-next-month').addEventListener('click', () => {
+                state.currentMonth++;
+                if (state.currentMonth > 11) {
+                    state.currentMonth = 0;
+                    state.currentYear++;
+                }
+                renderAll();
+            });
+
+            document.getElementById('oneline-month-picker').addEventListener('change', (e) => {
+                if (!e.target.value) return;
+                const [yStr, mStr] = e.target.value.split('-');
+                const y = Number(yStr);
+                const m = Number(mStr) - 1;
+                if (!Number.isNaN(y) && !Number.isNaN(m)) {
+                    state.currentYear = y;
+                    state.currentMonth = m;
+                    renderAll();
+                }
+            });
+
+            document.getElementById('oneline-go-today-month').addEventListener('click', () => {
+                const now = new Date();
+                state.currentYear = now.getFullYear();
+                state.currentMonth = now.getMonth();
+                syncTodayDate(false);
                 renderAll();
             });
 
@@ -1627,7 +1760,12 @@
             });
 
             document.getElementById('btn-export-json').addEventListener('click', () => {
-                const dataStr = JSON.stringify(state.todos, null, 2);
+                const exportPayload = {
+                    todos: state.todos,
+                    onelineEntries: state.onelineEntries,
+                    updatedAt: state.updatedAt || Date.now()
+                };
+                const dataStr = JSON.stringify(exportPayload, null, 2);
                 const blob = new Blob([dataStr], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -1651,7 +1789,10 @@
                         if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
                             throw new Error('올바르지 않은 백업 파일 형식입니다.');
                         }
-                        state.pendingImportData = normalizeTodosMap(parsed.todos || parsed);
+                        state.pendingImportData = {
+                            todos: normalizeTodosMap(parsed.todos || parsed),
+                            onelineEntries: normalizeOnelineMap(parsed.onelineEntries || {})
+                        };
                         document.getElementById('confirm-modal').classList.remove('hidden');
                     } catch (err) {
                         showToast('파일을 읽을 수 없습니다. 올바른 JSON 백업 파일인지 확인해주세요.', 'error');
@@ -1668,7 +1809,8 @@
 
             document.getElementById('btn-confirm-ok').addEventListener('click', () => {
                 if (state.pendingImportData) {
-                    state.todos = state.pendingImportData;
+                    state.todos = state.pendingImportData.todos || {};
+                    state.onelineEntries = state.pendingImportData.onelineEntries || {};
                     saveData();
                     renderAll();
                     showToast('데이터가 성공적으로 복원 및 동기화되었습니다!', 'success');
