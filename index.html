@@ -118,6 +118,10 @@
                     <div class="h-3.5 w-[1px] bg-slate-700 mx-0.5"></div>
 
                     <button id="btn-today" class="px-2 py-1 text-[11px] sm:text-xs font-semibold bg-indigo-600/25 text-indigo-300 border border-indigo-500/40 rounded-lg hover:bg-indigo-600 hover:text-white transition active:scale-95 whitespace-nowrap">
+                        today
+                    </button>
+                </div>
+
                 <!-- 우측: 뷰 전환 (데일리 / 위클리 / 먼슬리 / 한줄일기) & 클라우드 동기화/백업 설정 -->
                 <div class="flex items-center gap-1.5 order-2 sm:order-3">
                     <div class="inline-flex bg-slate-800/90 p-0.5 sm:p-1 rounded-xl border border-slate-700/80">
@@ -184,7 +188,6 @@
             <div class="shrink-0 mb-1.5 flex flex-wrap items-center justify-between gap-1.5 px-2 py-1 bg-slate-900/90 border border-slate-800 rounded-xl">
                 <div class="flex items-center gap-1.5 min-w-0">
                     <p id="daily-date-label" class="text-xs sm:text-sm font-bold text-slate-100 truncate"></p>
-                    <span id="daily-today-indicator" class="hidden px-1.5 py-0.5 text-[10px] font-bold bg-indigo-500/25 text-indigo-300 border border-indigo-500/40 rounded-md">오늘</span>
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
                     <button type="button" id="daily-prev-day" title="이전 날" class="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition active:scale-95">
@@ -1379,10 +1382,8 @@
                 state.selectedDateStr = state.todayStr || DateUtils.toDateStr(new Date());
             }
             const dateStr = state.selectedDateStr;
-            const isToday = (dateStr === state.todayStr);
 
             const dateLabel = document.getElementById('daily-date-label');
-            const todayIndicator = document.getElementById('daily-today-indicator');
             const datePicker = document.getElementById('daily-date-picker');
             const todoListEl = document.getElementById('daily-todo-list');
             const eventListEl = document.getElementById('daily-event-list');
@@ -1393,9 +1394,6 @@
             const onelineStatusEl = document.getElementById('daily-oneline-status');
 
             if (dateLabel) dateLabel.textContent = DateUtils.formatKoreanFull(dateStr);
-            if (todayIndicator) {
-                todayIndicator.classList.toggle('hidden', !isToday);
-            }
             if (datePicker) datePicker.value = dateStr;
 
             const dayItems = state.todos[dateStr] || [];
@@ -1502,7 +1500,6 @@
                         <span class="text-[11px] sm:text-xs font-extrabold ${dayTextColor}">${DAY_NAMES[dayOfWeek]}</span>
                         <span class="text-[11px] sm:text-xs font-bold ${isToday ? 'text-white bg-indigo-500 px-1.5 py-0.2 rounded-full' : 'text-slate-300'}">${dayDate.getMonth() + 1}/${dayDate.getDate()}</span>
                     </div>
-                    ${isToday ? '<span class="hidden xl:inline-block text-[9px] font-extrabold bg-indigo-500 text-white px-1.5 py-0.5 rounded">TODAY</span>' : ''}
                 `;
 
                 const splitBody = document.createElement('div');
