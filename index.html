@@ -270,8 +270,11 @@
                     <input type="text" id="input-sync-room" placeholder="예: my-secret-diary-2026" class="w-full px-3 py-2 text-xs bg-slate-800 text-slate-100 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-300 mb-1">2. 클라우드 데이터베이스 설정 (JSON 붙여넣기)</label>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">2. 클라우드 데이터베이스 설정 (중괄호 { ... } JSON 붙여넣기)</label>
                     <textarea id="input-firebase-config" rows="4" placeholder='{"apiKey":"...","authDomain":"...","projectId":"..."}' class="w-full px-3 py-2 text-[11px] font-mono bg-slate-800 text-slate-100 border border-slate-700 rounded-xl focus:outline-none focus:border-indigo-500"></textarea>
+                    <p class="text-[11px] text-slate-400 mt-1">
+                        Firebase 웹 앱 설정에서 복사한 중괄호 <code class="text-slate-200">{ ... }</code> 구간만 붙여넣으세요. (<code class="text-slate-200">const firebaseConfig =</code> 부분은 제외)
+                    </p>
                 </div>
             </div>
             <div class="flex items-center justify-between pt-1">
@@ -375,6 +378,36 @@
                 return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${dayName})`;
             }
         };
+
+        /**
+         * 사용자 입력에서 JSON/JS 객체 형태의 Firebase 설정 문자열 파싱
+         */
+        function parseFirebaseConfigInput(rawInput) {
+            if (!rawInput) return null;
+            let text = rawInput.trim();
+
+            // 앞부분의 변수 선언 제거 (예: const firebaseConfig = { ... };)
+            text = text.replace(/^(?:const|let|var)\s+[a-zA-Z0-9_$]+\s*=\s*/i, '');
+
+            // 첫 번째 '{'부터 마지막 '}'까지만 추출
+            const startIdx = text.indexOf('{');
+            const endIdx = text.lastIndexOf('}');
+            if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+                throw new Error('중괄호 { ... } 범위를 찾을 수 없습니다.');
+            }
+            text = text.slice(startIdx, endIdx + 1);
+
+            try {
+                return JSON.parse(text);
+            } catch {
+                // 따옴표 없는 키(예: apiKey: "...")나 후행 쉼표(, })가 섞인 경우 보정 시도
+                const normalized = text
+                    .replace(/([{,]\s*)([a-zA-Z0-9_$]+)\s*:/g, '$1"$2":')
+                    .replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_, inner) => `"${inner.replace(/"/g, '\\"')}"`)
+                    .replace(/,\s*([}\]])/g, '$1');
+                return JSON.parse(normalized);
+            }
+        }
 
         /**
          * 데이터 정규화 및 로컬/실시간 동기화 관리
@@ -527,7 +560,7 @@
             } catch (err) {
                 console.error('Firebase 연결 오류:', err);
                 updateSyncBadge(false, '로컬 자동저장');
-                showToast('클라우드 연결에 실패했습니다. 설정 JSON을 확인해주세요.', 'error');
+                showToast('클라우드 연결에 실패했습니다. 설정 값과 Firestore 규칙을 확인해주세요.', 'error');
             }
         }
 
@@ -1364,9 +1397,9 @@
 
                 if (rawCfg) {
                     try {
-                        parsedCfg = JSON.parse(rawCfg);
+                        parsedCfg = parseFirebaseConfigInput(rawCfg);
                     } catch (e) {
-                        showToast('JSON 형식이 올바르지 않습니다. 중괄호 전체를 붙여넣어 주세요.', 'error');
+                        showToast('JSON 형식이 올바르지 않습니다. 중괄호 { ... } 전체를 붙여넣어 주세요.', 'error');
                         return;
                     }
                 }
