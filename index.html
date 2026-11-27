@@ -2191,6 +2191,54 @@
                 }
             });
 
+            document.getElementById('btn-open-sync-modal').addEventListener('click', (e) => {
+                e.stopPropagation();
+                dataDropdown.classList.add('hidden');
+                const savedCfg = getSyncSettings();
+                document.getElementById('input-sync-room').value = savedCfg.roomId || '';
+                document.getElementById('input-firebase-config').value = savedCfg.firebaseConfig
+                    ? JSON.stringify(savedCfg.firebaseConfig, null, 2)
+                    : '';
+                document.getElementById('sync-modal').classList.remove('hidden');
+                setTimeout(() => document.getElementById('input-sync-room').focus(), 50);
+            });
+
+            document.getElementById('btn-close-sync-modal').addEventListener('click', () => {
+                document.getElementById('sync-modal').classList.add('hidden');
+            });
+
+            document.getElementById('sync-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'sync-modal') {
+                    document.getElementById('sync-modal').classList.add('hidden');
+                }
+            });
+
+            document.getElementById('btn-save-sync').addEventListener('click', async () => {
+                const roomId = document.getElementById('input-sync-room').value.trim() || 'default-shared-diary';
+                const rawCfg = document.getElementById('input-firebase-config').value.trim();
+                try {
+                    const parsedCfg = rawCfg ? parseFirebaseConfigInput(rawCfg) : null;
+                    if (parsedCfg && (!parsedCfg.apiKey || !parsedCfg.projectId)) {
+                        throw new Error('apiKey와 projectId가 포함된 설정을 입력해 주세요.');
+                    }
+                    localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify({
+                        roomId,
+                        firebaseConfig: parsedCfg
+                    }));
+                    document.getElementById('sync-modal').classList.add('hidden');
+                    if (parsedCfg) {
+                        const appId = typeof __app_id !== 'undefined' ? __app_id : 'github-diary-app';
+                        await connectFirestoreRealtime(parsedCfg, appId, roomId);
+                        showToast('실시간 클라우드 동기화가 연결되었습니다!', 'success');
+                    } else {
+                        updateSyncBadge(false, '로컬 자동저장');
+                        showToast('방 코드가 저장되었습니다.', 'info');
+                    }
+                } catch (err) {
+                    showToast(`설정 형식 오류: ${err.message}`, 'error');
+                }
+            });
+
             document.getElementById('btn-export-json').addEventListener('click', () => {
                 const exportPayload = {
                     todos: state.todos,
@@ -2267,8 +2315,16 @@
             initRealtimeSync();
         });
 
+        let lastViewportWidth = window.innerWidth;
         window.addEventListener('resize', () => {
-            renderAll();
+            const activeTag = document.activeElement && document.activeElement.tagName;
+            if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') {
+                return;
+            }
+            if (Math.abs(window.innerWidth - lastViewportWidth) > 20) {
+                lastViewportWidth = window.innerWidth;
+                renderAll();
+            }
         });
     </script>
 </body>
