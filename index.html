@@ -61,6 +61,13 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* 길게 누를 때 브라우저 기본 텍스트 선택/컨텍스트 메뉴 방지 */
+        .long-press-draggable {
+            -webkit-touch-callout: none;
+            user-select: none;
+            touch-action: pan-y;
+        }
+
         /* 모바일 주소창/화면 크기 변화 대응 동적 뷰포트 높이 및 전체 스크롤 차단 */
         html, body {
             height: 100dvh;
@@ -325,6 +332,39 @@
 
         const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
+        const DateUtils = {
+            toDateStr(date) {
+                const d = new Date(date);
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            },
+            parseDateStr(dateStr) {
+                const [y, m, d] = dateStr.split('-').map(Number);
+                return new Date(y, (m || 1) - 1, d || 1);
+            },
+            formatKoreanFull(dateStr) {
+                const d = this.parseDateStr(dateStr);
+                return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY_NAMES[d.getDay()]})`;
+            },
+            getStartOfWeek(date) {
+                // 월요일 시작(월~일) 기준 주 시작일 반환
+                const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                const day = d.getDay();
+                const diff = day === 0 ? -6 : 1 - day;
+                d.setDate(d.getDate() + diff);
+                return d;
+            },
+            getWeekOfMonth(date) {
+                const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+                const firstOfMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+                const firstWeekStart = this.getStartOfWeek(firstOfMonth);
+                const currentWeekStart = this.getStartOfWeek(d);
+                return Math.floor((currentWeekStart - firstWeekStart) / (7 * 24 * 60 * 60 * 1000)) + 1;
+            }
+        };
+
         // 애플리케이션 전역 상태 (기본 첫 화면: 'weekly')
         let state = {
             viewMode: 'weekly', // 기본 첫 페이지가 위클리
@@ -345,38 +385,17 @@
         let isApplyingRemoteUpdate = false;
         const broadcastChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('my_diary_realtime_sync') : null;
 
-        /**
-         * 날짜 유틸리티 함수
-         */
-        const DateUtils = {
-            toDateStr(date) {
-                const y = date.getFullYear();
-                const m = String(date.getMonth() + 1).padStart(2, '0');
-                const d = String(date.getDate()).padStart(2, '0');
-                return `${y}-${m}-${d}`;
-            },
-            parseDateStr(dateStr) {
-                const [y, m, d] = dateStr.split('-').map(Number);
-                return new Date(y, m - 1, d);
-            },
-            // 위클리용: 월요일 시작(월~일) 기준 주의 시작일 반환
-            getStartOfWeek(date) {
-                const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-                const day = d.getDay(); // 0(일) ~ 6(토)
-                const diffToMonday = day === 0 ? -6 : 1 - day;
-                d.setDate(d.getDate() + diffToMonday);
-                return d;
-            },
-            getWeekOfMonth(date) {
-                const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
-                const offset = firstDay === 0 ? 6 : firstDay - 1;
-                return Math.ceil((date.getDate() + offset) / 7);
-            },
-            formatKoreanFull(dateStr) {
-                const d = this.parseDateStr(dateStr);
-                const dayName = DAY_NAMES[d.getDay()];
-                return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${dayName})`;
-            }
+        // 길게 누르기(롱프레스)로 순서 변경하기 위한 상태
+        const reorderState = {
+            timerId: null,
+            activeItemId: null,
+            activeDateStr: null,
+            startY: 0,
+            isDragging: false,
+            ghostEl: null,
+            containerEl: null,
+            rowElements: [],
+            targetIndex: -1
         };
 
         /**
@@ -696,7 +715,9 @@
             if (!list) return;
             const target = list.find(t => t.id === id);
             if (!target) return;
-            target.text = newText.trim();
+            const trimmed = newText.trim();
+            if (!trimmed) return;
+            target.text = trimmed;
             saveData();
             renderAll();
             if (state.activeModalDateStr === dateStr) renderModalTodoList();
@@ -712,6 +733,166 @@
             saveData();
             renderAll();
             if (state.activeModalDateStr === dateStr) renderModalTodoList();
+        }
+
+        /**
+         * 길게 눌러 순서 변경: state.todos[dateStr] 내에서 itemId를 newIndex 위치로 이동
+         */
+        function reorderTodoItem(dateStr, itemId, newIndex) {
+            const list = state.todos[dateStr];
+            if (!Array.isArray(list) || list.length < 2) return;
+
+            const oldIndex = list.findIndex(t => t.id === itemId);
+            if (oldIndex === -1) return;
+
+            const clampedIndex = Math.max(0, Math.min(list.length - 1, newIndex));
+            if (oldIndex === clampedIndex) return;
+
+            const [movedItem] = list.splice(oldIndex, 1);
+            list.splice(clampedIndex, 0, movedItem);
+
+            saveData();
+            renderAll();
+            if (state.activeModalDateStr === dateStr) renderModalTodoList();
+            showToast('항목 순서가 변경되었습니다.', 'info');
+        }
+
+        function clearLongPressTimer() {
+            if (reorderState.timerId) {
+                clearTimeout(reorderState.timerId);
+                reorderState.timerId = null;
+            }
+        }
+
+        function cleanupReorderVisuals() {
+            reorderState.rowElements.forEach(el => {
+                el.classList.remove('opacity-35', 'ring-2', 'ring-indigo-400', 'border-t-2', 'border-t-indigo-400', 'border-b-2', 'border-b-indigo-400');
+            });
+            if (reorderState.ghostEl && reorderState.ghostEl.parentNode) {
+                reorderState.ghostEl.parentNode.removeChild(reorderState.ghostEl);
+            }
+            reorderState.ghostEl = null;
+            reorderState.rowElements = [];
+            reorderState.containerEl = null;
+            reorderState.activeItemId = null;
+            reorderState.activeDateStr = null;
+            reorderState.targetIndex = -1;
+            setTimeout(() => {
+                reorderState.isDragging = false;
+            }, 60);
+        }
+
+        function updateReorderDropIndicator(clientY) {
+            const rows = reorderState.rowElements;
+            if (!rows.length) return;
+
+            rows.forEach(r => r.classList.remove('border-t-2', 'border-t-indigo-400', 'border-b-2', 'border-b-indigo-400'));
+
+            let insertIdx = rows.length;
+            for (let i = 0; i < rows.length; i++) {
+                const rect = rows[i].getBoundingClientRect();
+                const midY = rect.top + rect.height / 2;
+                if (clientY < midY) {
+                    insertIdx = i;
+                    break;
+                }
+            }
+
+            const currentIdx = rows.findIndex(r => r.dataset.itemId === reorderState.activeItemId);
+            let effectiveIndex = insertIdx;
+            if (currentIdx !== -1 && insertIdx > currentIdx) {
+                effectiveIndex = insertIdx - 1;
+            }
+            reorderState.targetIndex = effectiveIndex;
+
+            if (insertIdx < rows.length) {
+                rows[insertIdx].classList.add('border-t-2', 'border-t-indigo-400');
+            } else if (rows.length > 0) {
+                rows[rows.length - 1].classList.add('border-b-2', 'border-b-indigo-400');
+            }
+        }
+
+        function startLongPressDrag(rowEl, dateStr, item, startX, startY) {
+            const parentBox = rowEl.parentElement;
+            if (!parentBox) return;
+
+            const sameTypeRows = Array.from(parentBox.querySelectorAll('[data-item-id]'));
+            if (sameTypeRows.length < 2) {
+                showToast('순서를 바꿀 다른 항목이 없습니다.', 'info');
+                return;
+            }
+
+            reorderState.isDragging = true;
+            reorderState.activeItemId = item.id;
+            reorderState.activeDateStr = dateStr;
+            reorderState.containerEl = parentBox;
+            reorderState.rowElements = sameTypeRows;
+
+            const rect = rowEl.getBoundingClientRect();
+            const ghost = rowEl.cloneNode(true);
+            ghost.className = `${rowEl.className} fixed z-[70] pointer-events-none shadow-2xl ring-2 ring-indigo-400 scale-[1.03] opacity-95`;
+            ghost.style.width = `${rect.width}px`;
+            ghost.style.left = `${rect.left}px`;
+            ghost.style.top = `${rect.top}px`;
+            document.body.appendChild(ghost);
+            reorderState.ghostEl = ghost;
+            reorderState.startY = startY;
+            reorderState.ghostOffsetY = startY - rect.top;
+
+            rowEl.classList.add('opacity-35');
+            if (navigator.vibrate) {
+                try { navigator.vibrate(25); } catch {}
+            }
+            showToast('위·아래로 움직여 순서를 바꾸세요.', 'info');
+            updateReorderDropIndicator(startY);
+        }
+
+        function handleGlobalPointerMove(e) {
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+
+            if (!reorderState.isDragging && reorderState.timerId) {
+                if (Math.hypot(clientX - reorderState.startX, clientY - reorderState.startY) > 10) {
+                    clearLongPressTimer();
+                }
+                return;
+            }
+
+            if (reorderState.isDragging && reorderState.ghostEl) {
+                if (e.cancelable) e.preventDefault();
+                reorderState.ghostEl.style.top = `${clientY - reorderState.ghostOffsetY}px`;
+                updateReorderDropIndicator(clientY);
+            }
+        }
+
+        function handleGlobalPointerUp() {
+            clearLongPressTimer();
+            if (!reorderState.isDragging) return;
+
+            const dateStr = reorderState.activeDateStr;
+            const itemId = reorderState.activeItemId;
+            const targetIdx = reorderState.targetIndex;
+            const dayList = state.todos[dateStr] || [];
+
+            cleanupReorderVisuals();
+
+            if (dateStr && itemId && targetIdx !== -1) {
+                const targetItem = dayList.find(t => t.id === itemId);
+                if (targetItem) {
+                    const sameTypeIndices = [];
+                    dayList.forEach((t, idx) => {
+                        const isEvt = t.type === 'event';
+                        const targetIsEvt = targetItem.type === 'event';
+                        if (isEvt === targetIsEvt) sameTypeIndices.push(idx);
+                    });
+
+                    const clampedSameIdx = Math.max(0, Math.min(sameTypeIndices.length - 1, targetIdx));
+                    const actualNewIndex = sameTypeIndices[clampedSameIdx];
+                    if (typeof actualNewIndex === 'number') {
+                        reorderTodoItem(dateStr, itemId, actualNewIndex);
+                    }
+                }
+            }
         }
 
         /**
@@ -840,11 +1021,9 @@
                     ${isToday ? '<span class="hidden xl:inline-block text-[9px] font-extrabold bg-indigo-500 text-white px-1.5 py-0.5 rounded">TODAY</span>' : ''}
                 `;
 
-                // 본문 2단 분리 컨테이너: 위(할 일 칸) / 아래(이벤트·메모 칸 - 절반 사이즈)
                 const splitBody = document.createElement('div');
                 splitBody.className = 'flex-1 min-h-0 flex flex-col divide-y divide-slate-800 overflow-hidden';
 
-                // [상단 섹션] 할 일 (To-Do) 칸 (비율 2)
                 const todoSection = document.createElement('div');
                 todoSection.className = 'flex-[2] min-h-0 flex flex-col overflow-hidden bg-slate-900/40';
                 todoSection.innerHTML = `
@@ -884,7 +1063,6 @@
                 todoSection.appendChild(todoListBox);
                 todoSection.appendChild(todoForm);
 
-                // [하단 섹션] 이벤트 / 메모 칸 (할 일 칸의 절반 비율 1)
                 const eventSection = document.createElement('div');
                 eventSection.className = 'flex-1 min-h-0 flex flex-col overflow-hidden bg-sky-950/15';
                 eventSection.innerHTML = `
@@ -936,9 +1114,6 @@
         /**
          * ============================================================================
          * 2. 먼슬리(월간) 달력 렌더링
-         * - 칸 구분 없이 통합 표시
-         * - 이벤트/메모는 파란색/초록색 텍스트로 표시, 할 일은 흰색 텍스트로 표시
-         * - 화면 크기에 상관없이 바깥 스크롤 없이 한 화면에 표시
          * ============================================================================
          */
         function renderMonthlyView() {
@@ -958,7 +1133,6 @@
             const totalRows = Math.ceil((startDayOfWeek + totalDaysInMonth) / 7);
             const totalCells = totalRows * 7;
 
-            // 행 개수(5주 또는 6주)에 맞춰 그리드 행 높이를 균등 분할하여 스크롤 제거
             grid.style.gridTemplateRows = `repeat(${totalRows}, minmax(0, 1fr))`;
 
             for (let i = 0; i < totalCells; i++) {
@@ -994,7 +1168,6 @@
 
                 cell.className = `h-full min-h-0 p-1 sm:p-1.5 rounded-lg sm:rounded-xl border transition-all cursor-pointer flex flex-col overflow-hidden select-none ${borderAndBgClass}`;
 
-                // 상단 날짜 헤더
                 const topRow = document.createElement('div');
                 topRow.className = 'shrink-0 flex items-center justify-between gap-1 mb-0.5';
 
@@ -1025,8 +1198,6 @@
                     ${countBadge}
                 `;
 
-                // 중단 통합 리스트: 칸 구분 없이 나열하되 색상으로 구분
-                // - 이벤트/메모가 위쪽에 먼저 표시되고, 할 일은 그 다음에 표시
                 const listContainer = document.createElement('div');
                 listContainer.className = 'flex-1 min-h-0 space-y-0.5 overflow-y-auto pr-0.5';
 
@@ -1040,7 +1211,6 @@
                     const isEvent = item.type === 'event';
 
                     if (isEvent) {
-                        // 이벤트나 메모: 파란색 또는 초록색 텍스트로 표시
                         const eventTextColor = item.completed ? 'text-emerald-400' : 'text-blue-400';
                         itemEl.className = `text-[10px] sm:text-[11px] truncate px-1 py-0.2 rounded bg-blue-950/35 ${eventTextColor} font-semibold flex items-center gap-1`;
                         itemEl.innerHTML = `
@@ -1048,7 +1218,6 @@
                             <span class="truncate">${escapeHTML(item.text)}</span>
                         `;
                     } else {
-                        // 할 일: 배경 색상 없이, 할 일 텍스트 자체를 흰색으로 표시
                         itemEl.className = `text-[10px] sm:text-[11px] truncate px-1 py-0.2 rounded text-white font-semibold flex items-center gap-1 ${
                             item.completed ? 'opacity-50 line-through' : ''
                         }`;
@@ -1074,20 +1243,44 @@
         function createTodoItemElement(dateStr, item, compact = false) {
             const isEvent = item.type === 'event';
             const row = document.createElement('div');
+            row.dataset.itemId = item.id;
 
             if (isEvent) {
-                row.className = `group flex items-start justify-between gap-1 ${compact ? 'p-1.5' : 'p-2.5'} rounded-lg border transition ${
+                row.className = `long-press-draggable group flex items-start justify-between gap-1 ${compact ? 'p-1.5' : 'p-2.5'} rounded-lg border transition ${
                     item.completed
                         ? 'bg-emerald-950/30 border-emerald-800/50'
                         : 'bg-sky-950/40 border-sky-800/50 hover:border-sky-500/60'
                 }`;
             } else {
-                row.className = `group flex items-start justify-between gap-1 ${compact ? 'p-1.5' : 'p-2.5'} rounded-lg border transition ${
+                row.className = `long-press-draggable group flex items-start justify-between gap-1 ${compact ? 'p-1.5' : 'p-2.5'} rounded-lg border transition ${
                     item.completed
                         ? 'bg-slate-800/40 border-slate-800/80'
                         : 'bg-slate-800/90 border-slate-700/80 hover:border-indigo-500/50'
                 }`;
             }
+
+            const beginPress = (clientX, clientY) => {
+                clearLongPressTimer();
+                reorderState.startX = clientX;
+                reorderState.startY = clientY;
+                reorderState.timerId = setTimeout(() => {
+                    startLongPressDrag(row, dateStr, item, clientX, clientY);
+                }, 450);
+            };
+
+            row.addEventListener('mousedown', (e) => {
+                if (e.button !== 0 || e.target.closest('button')) return;
+                beginPress(e.clientX, e.clientY);
+            });
+
+            row.addEventListener('touchstart', (e) => {
+                if (e.target.closest('button') || !e.touches.length) return;
+                beginPress(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+
+            row.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
 
             const left = document.createElement('div');
             left.className = 'flex items-start gap-1.5 flex-1 min-w-0';
@@ -1100,7 +1293,11 @@
                     : (isEvent ? 'border-sky-400 bg-slate-900' : 'border-slate-500 hover:border-indigo-400 bg-slate-900')
             }`;
             checkbox.innerHTML = item.completed ? `<i data-lucide="check" class="w-2.5 h-2.5 stroke-[3]"></i>` : '';
-            checkbox.addEventListener('click', () => toggleTodo(dateStr, item.id));
+            checkbox.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (reorderState.isDragging) return;
+                toggleTodo(dateStr, item.id);
+            });
 
             const textSpan = document.createElement('span');
             let textColorClass = 'text-slate-100 font-medium';
@@ -1112,34 +1309,41 @@
 
             textSpan.className = `${compact ? 'text-[11px]' : 'text-sm'} break-words leading-snug flex-1 cursor-pointer select-none ${textColorClass}`;
             textSpan.textContent = item.text;
-            textSpan.title = '클릭하여 상태 변경 / 더블클릭하여 수정';
+            textSpan.title = '클릭: 완료 전환 / 길게 누르기: 순서 변경 / 더블클릭: 수정';
 
-            textSpan.addEventListener('click', () => toggleTodo(dateStr, item.id));
+            textSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (reorderState.isDragging) return;
+                toggleTodo(dateStr, item.id);
+            });
 
             textSpan.addEventListener('dblclick', (e) => {
                 e.stopPropagation();
+                clearLongPressTimer();
                 const editInput = document.createElement('input');
                 editInput.type = 'text';
                 editInput.value = item.text;
-                editInput.className = `${compact ? 'text-[11px]' : 'text-sm'} w-full px-1.5 py-0.5 border border-indigo-400 rounded focus:outline-none bg-slate-900 text-slate-100`;
+                editInput.className = `w-full px-1.5 py-0.5 ${compact ? 'text-[11px]' : 'text-sm'} bg-slate-950 text-white border border-indigo-500 rounded focus:outline-none`;
 
                 const commitEdit = () => {
                     if (editInput.value.trim()) {
                         editTodoText(dateStr, item.id, editInput.value);
                     } else {
                         renderAll();
-                        if (state.activeModalDateStr === dateStr) renderModalTodoList();
+                        if (state.activeModalDateStr) renderModalTodoList();
                     }
                 };
 
-                editInput.addEventListener('blur', commitEdit);
                 editInput.addEventListener('keydown', (ev) => {
-                    if (ev.key === 'Enter') commitEdit();
-                    if (ev.key === 'Escape') {
+                    if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        commitEdit();
+                    } else if (ev.key === 'Escape') {
                         renderAll();
-                        if (state.activeModalDateStr === dateStr) renderModalTodoList();
+                        if (state.activeModalDateStr) renderModalTodoList();
                     }
                 });
+                editInput.addEventListener('blur', commitEdit);
 
                 left.replaceChild(editInput, textSpan);
                 editInput.focus();
@@ -1283,6 +1487,12 @@
          * ============================================================================
          */
         function initEventListeners() {
+            window.addEventListener('mousemove', handleGlobalPointerMove);
+            window.addEventListener('touchmove', handleGlobalPointerMove, { passive: false });
+            window.addEventListener('mouseup', handleGlobalPointerUp);
+            window.addEventListener('touchend', handleGlobalPointerUp);
+            window.addEventListener('touchcancel', handleGlobalPointerUp);
+
             document.getElementById('tab-weekly').addEventListener('click', () => {
                 state.viewMode = 'weekly';
                 localStorage.setItem(VIEW_STATE_KEY, 'weekly');
@@ -1341,7 +1551,6 @@
                 showToast('오늘 날짜로 이동했습니다.', 'info');
             });
 
-            // 모달 카테고리 토글 및 폼
             document.getElementById('modal-type-todo').addEventListener('click', () => setModalAddType('todo'));
             document.getElementById('modal-type-event').addEventListener('click', () => setModalAddType('event'));
 
@@ -1365,7 +1574,6 @@
                 }
             });
 
-            // 동기화/백업 드롭다운 토글
             const dataMenuBtn = document.getElementById('btn-data-menu');
             const dataDropdown = document.getElementById('data-menu-dropdown');
 
@@ -1378,7 +1586,6 @@
                 dataDropdown.classList.add('hidden');
             });
 
-            // 실시간 클라우드 동기화 모달 열기/저장
             document.getElementById('btn-open-sync-modal').addEventListener('click', () => {
                 const cfg = getSyncSettings();
                 document.getElementById('input-sync-room').value = cfg.roomId || '';
@@ -1419,7 +1626,6 @@
                 }
             });
 
-            // JSON 백업 내보내기
             document.getElementById('btn-export-json').addEventListener('click', () => {
                 const dataStr = JSON.stringify(state.todos, null, 2);
                 const blob = new Blob([dataStr], { type: 'application/json' });
@@ -1434,7 +1640,6 @@
                 showToast('백업 파일(JSON)이 다운로드되었습니다.', 'success');
             });
 
-            // JSON 백업 불러오기
             document.getElementById('input-import-json').addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -1473,7 +1678,6 @@
             });
         }
 
-        // 페이지 로드 시 초기화
         window.addEventListener('DOMContentLoaded', () => {
             loadData();
             syncTodayDate(true);
@@ -1485,7 +1689,6 @@
             initRealtimeSync();
         });
 
-        // 화면 크기/회전 변경 시에도 전체 세로 길이와 스크롤 영역이 어긋나지 않도록 즉시 재계산
         window.addEventListener('resize', () => {
             renderAll();
         });
