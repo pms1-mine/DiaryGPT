@@ -216,8 +216,8 @@
                 </div>
             </div>
 
-            <!-- 캡처 대상 2x2 4칸 그리드 -->
-            <div id="goals-capture-area" class="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 md:grid-rows-2 gap-2 overflow-y-auto md:overflow-hidden p-0.5 bg-darkbg rounded-2xl">
+            <!-- 캡처 대상 3열 2행 6칸 그리드 -->
+            <div id="goals-capture-area" class="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-3 md:grid-rows-2 gap-2 overflow-y-auto md:overflow-hidden p-0.5 bg-darkbg rounded-2xl">
                 <!-- 1. 장기목표 (5y↑) -->
                 <div class="min-h-[210px] md:min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/95 border border-slate-800 overflow-hidden">
                     <div class="shrink-0 px-3 py-1.5 bg-violet-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
@@ -270,7 +270,28 @@
                     </form>
                 </div>
 
-                <!-- 3. 올해목표 -->
+                <!-- 3. 디데이 설정 -->
+                <div class="min-h-[210px] md:min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/95 border border-slate-800 overflow-hidden">
+                    <div class="shrink-0 px-3 py-1.5 bg-rose-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+                            <h2 class="text-xs sm:text-sm font-extrabold text-rose-200">디데이 설정</h2>
+                        </div>
+                        <span id="dday-today-label" class="text-[10px] sm:text-[11px] font-semibold text-slate-400 whitespace-nowrap"></span>
+                    </div>
+                    <div id="dday-list" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1"></div>
+                    <form id="dday-form" class="shrink-0 p-1.5 border-t border-slate-800 flex flex-wrap gap-1 bg-slate-900">
+                        <input type="text" id="dday-text-input" placeholder="디데이 이름 (예: 시험)" autocomplete="off"
+                            class="flex-1 min-w-[90px] px-2 py-1 text-xs bg-slate-800 text-slate-100 placeholder-slate-500 border border-slate-700 rounded-lg focus:outline-none focus:border-rose-400">
+                        <input type="date" id="dday-date-input" aria-label="디데이 날짜"
+                            class="shrink-0 px-1.5 py-1 text-[11px] font-semibold bg-slate-800 text-rose-200 border border-slate-700 rounded-lg focus:outline-none focus:border-rose-400 [color-scheme:dark]">
+                        <button type="submit" class="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg transition active:scale-95 shrink-0 flex items-center gap-0.5">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 4. 올해목표 -->
                 <div class="min-h-[210px] md:min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/95 border border-slate-800 overflow-hidden">
                     <div class="shrink-0 px-3 py-1.5 bg-sky-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
                         <div class="flex items-center gap-1.5">
@@ -296,7 +317,7 @@
                     </form>
                 </div>
 
-                <!-- 4. (올해의) 월별목표 -->
+                <!-- 5. (올해의) 월별목표 -->
                 <div class="min-h-[210px] md:min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/95 border border-slate-800 overflow-hidden">
                     <div class="shrink-0 px-3 py-1.5 bg-emerald-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
                         <div class="flex items-center gap-1.5">
@@ -323,6 +344,18 @@
                             <i data-lucide="plus" class="w-3.5 h-3.5"></i>
                         </button>
                     </form>
+                </div>
+
+                <!-- 6. 루티너리 (루틴별 달성도) -->
+                <div class="min-h-[210px] md:min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/95 border border-slate-800 overflow-hidden">
+                    <div class="shrink-0 px-3 py-1.5 bg-amber-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                            <h2 class="text-xs sm:text-sm font-extrabold text-amber-200">루티너리</h2>
+                        </div>
+                        <span id="routinery-month-label" class="text-[10px] sm:text-[11px] font-semibold text-slate-400 whitespace-nowrap"></span>
+                    </div>
+                    <div id="routinery-list" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5"></div>
                 </div>
             </div>
 
@@ -683,6 +716,7 @@
             goals: [],
             routines: [],
             routineChecks: {},
+            ddays: [],
             goalFilterCategory: 'ALL',
             onelineFilterEmoji: 'ALL',
             openEmojiPickerDateStr: null,
@@ -778,6 +812,17 @@
                 }));
         }
 
+        function normalizeDdays(rawList) {
+            if (!Array.isArray(rawList)) return [];
+            return rawList
+                .filter(d => d && typeof d.text === 'string' && d.text.trim() && /^\d{4}-\d{2}-\d{2}$/.test(String(d.date || '')))
+                .map(d => ({
+                    id: String(d.id || `dday-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
+                    text: d.text.trim(),
+                    date: String(d.date)
+                }));
+        }
+
         function normalizeRoutineChecks(raw) {
             const out = {};
             if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
@@ -821,6 +866,7 @@
                     }
                     if (parsed.routines) state.routines = normalizeRoutines(parsed.routines);
                     if (parsed.routineChecks) state.routineChecks = normalizeRoutineChecks(parsed.routineChecks);
+                    if (parsed.ddays) state.ddays = normalizeDdays(parsed.ddays);
                     state.updatedAt = parsed.updatedAt || 0;
                 }
                 const savedGoals = localStorage.getItem(GOALS_STORAGE_KEY);
@@ -866,6 +912,7 @@
                 goals: state.goals,
                 routines: state.routines,
                 routineChecks: state.routineChecks,
+                ddays: state.ddays,
                 updatedAt: state.updatedAt
             };
             try {
@@ -931,6 +978,7 @@
                     goalsJson: JSON.stringify(payload.goals || state.goals),
                     routinesJson: JSON.stringify(payload.routines || state.routines),
                     routineChecksJson: JSON.stringify(payload.routineChecks || state.routineChecks),
+                    ddaysJson: JSON.stringify(payload.ddays || state.ddays),
                     updatedAt: payload.updatedAt
                 });
             } catch (e) {
@@ -966,6 +1014,7 @@
                                 goals: state.goals,
                                 routines: state.routines,
                                 routineChecks: state.routineChecks,
+                                ddays: state.ddays,
                                 updatedAt: Date.now()
                             });
                         }
@@ -993,6 +1042,7 @@
                             state.goals = normalizeGoalsList(parsedGoals);
                             if (typeof remote.routinesJson === 'string') state.routines = normalizeRoutines(JSON.parse(remote.routinesJson));
                             if (typeof remote.routineChecksJson === 'string') state.routineChecks = normalizeRoutineChecks(JSON.parse(remote.routineChecksJson));
+                            if (typeof remote.ddaysJson === 'string') state.ddays = normalizeDdays(JSON.parse(remote.ddaysJson));
                             state.updatedAt = remote.updatedAt;
                             localStorage.setItem(STORAGE_KEY, JSON.stringify({
                                 todos: state.todos,
@@ -1001,6 +1051,7 @@
                                 goals: state.goals,
                                 routines: state.routines,
                                 routineChecks: state.routineChecks,
+                                ddays: state.ddays,
                                 updatedAt: state.updatedAt
                             }));
                             localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify({
@@ -1055,6 +1106,7 @@
                         }
                         if (data.routines) state.routines = normalizeRoutines(data.routines);
                         if (data.routineChecks) state.routineChecks = normalizeRoutineChecks(data.routineChecks);
+                        if (data.ddays) state.ddays = normalizeDdays(data.ddays);
                         state.updatedAt = data.updatedAt;
                         renderAll();
                         if (state.activeModalDateStr) renderModalTodoList();
@@ -1075,6 +1127,7 @@
                             if (data.goals) state.goals = normalizeGoalsList(data.goals);
                             if (data.routines) state.routines = normalizeRoutines(data.routines);
                             if (data.routineChecks) state.routineChecks = normalizeRoutineChecks(data.routineChecks);
+                            if (data.ddays) state.ddays = normalizeDdays(data.ddays);
                             state.updatedAt = data.updatedAt;
                             renderAll();
                             if (state.activeModalDateStr) renderModalTodoList();
@@ -1854,6 +1907,125 @@
             return row;
         }
 
+        function addDday(text, dateStr) {
+            const t = String(text || '').trim();
+            if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ''))) return false;
+            state.ddays.push({
+                id: `dday-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                text: t,
+                date: dateStr
+            });
+            saveData();
+            renderAll();
+            return true;
+        }
+
+        function deleteDday(id) {
+            state.ddays = state.ddays.filter(d => d.id !== id);
+            saveData();
+            renderAll();
+        }
+
+        // 한국 시간 기준 오늘(state.todayStr)과 목표일의 일수 차이 (목표일 - 오늘)
+        function calcDdayDiff(targetStr) {
+            const today = DateUtils.parseDateStr(state.todayStr || DateUtils.toDateStr(nowKST()));
+            const target = DateUtils.parseDateStr(targetStr);
+            const t0 = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
+            const t1 = Date.UTC(target.getFullYear(), target.getMonth(), target.getDate());
+            return Math.round((t1 - t0) / 86400000);
+        }
+
+        function renderDdayCard() {
+            const listEl = document.getElementById('dday-list');
+            if (!listEl) return;
+            const todayLabel = document.getElementById('dday-today-label');
+            if (todayLabel) todayLabel.textContent = `오늘 ${DateUtils.formatKoreanFull(state.todayStr)} 기준`;
+
+            listEl.innerHTML = '';
+            if (state.ddays.length === 0) {
+                listEl.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-600 text-center py-4">등록된 디데이가 없습니다.</div>`;
+                return;
+            }
+            const items = state.ddays
+                .map(d => ({ ...d, diff: calcDdayDiff(d.date) }))
+                .sort((a, b) => {
+                    const ap = a.diff >= 0, bp = b.diff >= 0;
+                    if (ap !== bp) return ap ? -1 : 1;
+                    return ap ? a.diff - b.diff : b.diff - a.diff;
+                });
+            items.forEach(d => {
+                const label = d.diff === 0 ? 'D-Day' : (d.diff > 0 ? `D-${d.diff}` : `D+${Math.abs(d.diff)}`);
+                const labelCls = d.diff === 0
+                    ? 'bg-rose-500 text-white border-rose-400'
+                    : (d.diff > 0 ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' : 'bg-slate-700/40 text-slate-400 border-slate-600/50');
+                const row = document.createElement('div');
+                row.className = `group flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg border transition ${
+                    d.diff < 0 ? 'bg-slate-800/40 border-slate-800/80' : 'bg-slate-800/85 border-slate-700/80 hover:border-slate-600'
+                }`;
+                row.innerHTML = `
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-medium break-words leading-snug ${d.diff < 0 ? 'text-slate-500' : 'text-slate-100'}">${escapeHTML(d.text)}</p>
+                        <p class="text-[10px] text-slate-500">${escapeHTML(DateUtils.formatKoreanFull(d.date))}</p>
+                    </div>
+                    <span class="px-1.5 py-0.5 rounded text-[11px] font-extrabold shrink-0 border ${labelCls}">${label}</span>
+                `;
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.title = '디데이 삭제';
+                delBtn.className = 'opacity-70 sm:opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-rose-400 rounded transition shrink-0';
+                delBtn.innerHTML = `<i data-lucide="trash-2" class="w-3 h-3"></i>`;
+                delBtn.addEventListener('click', () => deleteDday(d.id));
+                row.appendChild(delBtn);
+                listEl.appendChild(row);
+            });
+        }
+
+        function renderRoutineryCard() {
+            const listEl = document.getElementById('routinery-list');
+            if (!listEl) return;
+            const year = state.currentYear;
+            const month = state.currentMonth;
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            const today = DateUtils.parseDateStr(state.todayStr || DateUtils.toDateStr(nowKST()));
+            const monthIdx = year * 12 + month;
+            const todayIdx = today.getFullYear() * 12 + today.getMonth();
+            let elapsed = 0;
+            if (monthIdx < todayIdx) elapsed = lastDay;
+            else if (monthIdx === todayIdx) elapsed = today.getDate();
+
+            const labelEl = document.getElementById('routinery-month-label');
+            if (labelEl) labelEl.textContent = `${year}년 ${month + 1}월 달성도`;
+
+            listEl.innerHTML = '';
+            if (state.routines.length === 0) {
+                listEl.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-600 text-center py-4">데일리 탭에서 루틴을 추가하세요.</div>`;
+                return;
+            }
+            const prefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
+            state.routines.forEach(r => {
+                let done = 0;
+                Object.keys(state.routineChecks).forEach(k => {
+                    if (!k.startsWith(prefix)) return;
+                    const day = Number(k.slice(8, 10));
+                    if (day <= elapsed && state.routineChecks[k].includes(r.id)) done++;
+                });
+                const percent = elapsed > 0 ? Math.round((done / elapsed) * 100) : 0;
+                const row = document.createElement('div');
+                row.className = 'px-2 py-1.5 rounded-lg border bg-slate-800/85 border-slate-700/80';
+                row.innerHTML = `
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-medium text-slate-100 break-words leading-snug flex-1 min-w-0">${escapeHTML(r.text)}</span>
+                        <span class="text-[10px] font-semibold text-slate-400 shrink-0">${done}/${elapsed}일</span>
+                        <span class="text-[11px] font-bold text-amber-300 min-w-[34px] text-right shrink-0">${percent}%</span>
+                    </div>
+                    <div class="mt-1 h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                        <div class="h-full bg-amber-400 transition-all duration-300" style="width: ${percent}%"></div>
+                    </div>
+                `;
+                listEl.appendChild(row);
+            });
+        }
+
         let goalMonthListScrolled = false;
 
         function renderGoalsView() {
@@ -1880,6 +2052,8 @@
             }
 
             renderGoalsCategoryFilter();
+            renderDdayCard();
+            renderRoutineryCard();
 
             const scopeMeta = [
                 {
@@ -2980,6 +3154,18 @@
                 }
             });
 
+            document.getElementById('dday-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const textInput = document.getElementById('dday-text-input');
+                const dateInput = document.getElementById('dday-date-input');
+                if (addDday(textInput.value, dateInput.value)) {
+                    textInput.value = '';
+                    dateInput.value = '';
+                } else {
+                    showToast('디데이 이름과 날짜를 모두 입력해주세요.', 'error');
+                }
+            });
+
             document.getElementById('routine-form').addEventListener('submit', (e) => {
                 e.preventDefault();
                 const input = document.getElementById('routine-input');
@@ -3168,6 +3354,7 @@
                     goals: state.goals,
                     routines: state.routines,
                     routineChecks: state.routineChecks,
+                    ddays: state.ddays,
                     updatedAt: state.updatedAt || Date.now()
                 };
                 const dataStr = JSON.stringify(exportPayload, null, 2);
@@ -3200,7 +3387,8 @@
                             onelineEmojis: normalizeOnelineEmojiMap(parsed.onelineEmojis || {}),
                             goals: normalizeGoalsList(parsed.goals || []),
                             routines: normalizeRoutines(parsed.routines || []),
-                            routineChecks: normalizeRoutineChecks(parsed.routineChecks || {})
+                            routineChecks: normalizeRoutineChecks(parsed.routineChecks || {}),
+                            ddays: normalizeDdays(parsed.ddays || [])
                         };
                         document.getElementById('confirm-modal').classList.remove('hidden');
                     } catch (err) {
@@ -3224,6 +3412,7 @@
                     state.goals = state.pendingImportData.goals || [];
                 state.routines = state.pendingImportData.routines || [];
                 state.routineChecks = state.pendingImportData.routineChecks || {};
+                state.ddays = state.pendingImportData.ddays || [];
                     saveData();
                     renderAll();
                     showToast('데이터가 성공적으로 복원 및 동기화되었습니다!', 'success');
