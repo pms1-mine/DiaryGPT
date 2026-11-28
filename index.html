@@ -10,6 +10,8 @@
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <!-- Lucide 아이콘 로드 -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- 목표 탭 이미지 캡처(PNG 저장)용 html2canvas 로드 -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     
     <script>
         tailwind.config = {
@@ -122,9 +124,13 @@
                     </button>
                 </div>
 
-                <!-- 우측: 뷰 전환 (데일리 / 위클리 / 먼슬리 / 한줄일기) & 클라우드 동기화/백업 설정 -->
-                <div class="flex items-center gap-1.5 order-2 sm:order-3 shrink-0">
+                <!-- 우측: 뷰 전환 (목표 / 데일리 / 위클리 / 먼슬리 / 한줄일기) & 클라우드 동기화/백업 설정 -->
+                <div class="flex items-center gap-1.5 order-2 sm:order-3 shrink-0 max-w-full overflow-x-auto">
                     <div class="inline-flex bg-slate-800/90 p-0.5 sm:p-1 rounded-xl border border-slate-700/80 whitespace-nowrap">
+                        <button id="tab-goals" class="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition whitespace-nowrap">
+                            <i data-lucide="target" class="w-3.5 h-3.5"></i>
+                            <span>목표</span>
+                        </button>
                         <button id="tab-daily" class="flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition whitespace-nowrap">
                             <i data-lucide="sun" class="w-3.5 h-3.5"></i>
                             <span>데일리</span>
@@ -182,6 +188,152 @@
 
     <!-- 메인 콘텐츠 영역: 남은 화면 높이를 100% 채우며 바깥 스크롤 없음 -->
     <main class="flex-1 min-h-0 max-w-[1800px] w-full mx-auto px-2 sm:px-5 py-1.5 sm:py-2.5 flex flex-col overflow-hidden">
+
+        <!-- -1. 목표 뷰 컨테이너 (2x2 그리드 + 분류 필터 + 달성률 + 이미지 저장) -->
+        <section id="view-goals" class="hidden flex-1 min-h-0 h-full flex flex-col fade-in overflow-hidden">
+            <!-- 상단 컨트롤 바: 전체 달성률, 분류 필터, 이미지 저장 버튼 -->
+            <div class="shrink-0 mb-1.5 flex flex-wrap items-center justify-between gap-1.5 px-2.5 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="text-xs sm:text-sm font-extrabold text-slate-100 whitespace-nowrap" id="goals-header-title">2026년 목표 로드맵</span>
+                    <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-indigo-950/60 border border-indigo-500/30">
+                        <span class="text-[10px] sm:text-[11px] font-semibold text-indigo-300">전체 달성률</span>
+                        <span id="goals-overall-rate" class="text-xs font-extrabold text-white">0%</span>
+                        <span id="goals-overall-count" class="text-[10px] text-slate-400">(0/0)</span>
+                    </div>
+                </div>
+
+                <!-- 분류 필터 바 -->
+                <div id="goals-category-filter" class="flex items-center gap-1 overflow-x-auto max-w-full py-0.5" aria-label="목표 분류 필터"></div>
+
+                <!-- 목표 탭 이미지 저장 버튼 -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button type="button" id="btn-export-goals-image" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-semibold rounded-lg transition active:scale-95 flex items-center gap-1 shadow-sm whitespace-nowrap">
+                        <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                        <span>이미지로 저장</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 캡처 대상 2x2 4칸 그리드 -->
+            <div id="goals-capture-area" class="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 md:grid-rows-2 gap-2 overflow-y-auto md:overflow-hidden p-0.5 bg-darkbg rounded-2xl">
+                <!-- 1. 장기목표 (5y↑) -->
+                <div class="min-h-[210px] md:min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/95 border border-slate-800 overflow-hidden">
+                    <div class="shrink-0 px-3 py-1.5 bg-violet-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-violet-400"></span>
+                            <h2 class="text-xs sm:text-sm font-extrabold text-violet-200">장기목표 <span class="text-[11px] font-semibold text-violet-400">(5y↑)</span></h2>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-16 sm:w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="goal-bar-long" class="h-full bg-violet-400 transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <span id="goal-rate-long" class="text-[11px] font-bold text-violet-300 min-w-[34px] text-right">0%</span>
+                        </div>
+                    </div>
+                    <div id="goal-list-long" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1"></div>
+                    <form data-goal-scope="long" class="goal-add-form shrink-0 p-1.5 border-t border-slate-800 flex gap-1 bg-slate-900">
+                        <input type="text" name="category" list="goal-category-suggestions" placeholder="분류" autocomplete="off"
+                            class="w-16 sm:w-20 shrink-0 px-2 py-1 text-[11px] bg-slate-800 text-violet-200 placeholder-slate-500 border border-slate-700 rounded-lg focus:outline-none focus:border-violet-400">
+                        <input type="text" name="text" placeholder="5년 이상 장기목표 입력..." autocomplete="off"
+                            class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 text-slate-100 placeholder-slate-500 border border-slate-700 rounded-lg focus:outline-none focus:border-violet-400">
+                        <button type="submit" class="px-2.5 py-1 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-lg transition active:scale-95 shrink-0 flex items-center gap-0.5">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 2. 중기목표 (5y) -->
+                <div class="min-h-[210px] md:min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/95 border border-slate-800 overflow-hidden">
+                    <div class="shrink-0 px-3 py-1.5 bg-indigo-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+                            <h2 class="text-xs sm:text-sm font-extrabold text-indigo-200">중기목표 <span class="text-[11px] font-semibold text-indigo-400">(5y)</span></h2>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-16 sm:w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="goal-bar-mid" class="h-full bg-indigo-400 transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <span id="goal-rate-mid" class="text-[11px] font-bold text-indigo-300 min-w-[34px] text-right">0%</span>
+                        </div>
+                    </div>
+                    <div id="goal-list-mid" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1"></div>
+                    <form data-goal-scope="mid" class="goal-add-form shrink-0 p-1.5 border-t border-slate-800 flex gap-1 bg-slate-900">
+                        <input type="text" name="category" list="goal-category-suggestions" placeholder="분류" autocomplete="off"
+                            class="w-16 sm:w-20 shrink-0 px-2 py-1 text-[11px] bg-slate-800 text-indigo-200 placeholder-slate-500 border border-slate-700 rounded-lg focus:outline-none focus:border-indigo-400">
+                        <input type="text" name="text" placeholder="5년 내 중기목표 입력..." autocomplete="off"
+                            class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 text-slate-100 placeholder-slate-500 border border-slate-700 rounded-lg focus:outline-none focus:border-indigo-400">
+                        <button type="submit" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition active:scale-95 shrink-0 flex items-center gap-0.5">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 3. 올해목표 -->
+                <div class="min-h-[210px] md:min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/95 border border-slate-800 overflow-hidden">
+                    <div class="shrink-0 px-3 py-1.5 bg-sky-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                            <h2 id="goal-title-year" class="text-xs sm:text-sm font-extrabold text-sky-200">2026년 올해목표</h2>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-16 sm:w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="goal-bar-year" class="h-full bg-sky-400 transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <span id="goal-rate-year" class="text-[11px] font-bold text-sky-300 min-w-[34px] text-right">0%</span>
+                        </div>
+                    </div>
+                    <div id="goal-list-year" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1"></div>
+                    <form data-goal-scope="year" class="goal-add-form shrink-0 p-1.5 border-t border-slate-800 flex gap-1 bg-slate-900">
+                        <input type="text" name="category" list="goal-category-suggestions" placeholder="분류" autocomplete="off"
+                            class="w-16 sm:w-20 shrink-0 px-2 py-1 text-[11px] bg-slate-800 text-sky-200 placeholder-slate-500 border border-slate-700 rounded-lg focus:outline-none focus:border-sky-400">
+                        <input type="text" name="text" placeholder="올해 달성할 목표 입력..." autocomplete="off"
+                            class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 text-slate-100 placeholder-slate-500 border border-slate-700 rounded-lg focus:outline-none focus:border-sky-400">
+                        <button type="submit" class="px-2.5 py-1 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-lg transition active:scale-95 shrink-0 flex items-center gap-0.5">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 4. (올해의) 월별목표 -->
+                <div class="min-h-[210px] md:min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/95 border border-slate-800 overflow-hidden">
+                    <div class="shrink-0 px-3 py-1.5 bg-emerald-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                            <h2 id="goal-title-month" class="text-xs sm:text-sm font-extrabold text-emerald-200">2026년 11월 월별목표</h2>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-16 sm:w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="goal-bar-month" class="h-full bg-emerald-400 transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <span id="goal-rate-month" class="text-[11px] font-bold text-emerald-300 min-w-[34px] text-right">0%</span>
+                        </div>
+                    </div>
+                    <div id="goal-list-month" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1"></div>
+                    <form data-goal-scope="month" class="goal-add-form shrink-0 p-1.5 border-t border-slate-800 flex gap-1 bg-slate-900">
+                        <select name="targetMonth" id="goal-month-select" aria-label="목표 월 선택"
+                            class="px-1.5 py-1 text-[11px] font-semibold bg-slate-800 text-emerald-200 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-400 cursor-pointer shrink-0">
+                        </select>
+                        <input type="text" name="category" list="goal-category-suggestions" placeholder="분류" autocomplete="off"
+                            class="w-14 sm:w-16 shrink-0 px-1.5 py-1 text-[11px] bg-slate-800 text-emerald-200 placeholder-slate-500 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-400">
+                        <input type="text" name="text" placeholder="월별목표 입력..." autocomplete="off"
+                            class="flex-1 min-w-0 px-2 py-1 text-xs bg-slate-800 text-slate-100 placeholder-slate-500 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-400">
+                        <button type="submit" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition active:scale-95 shrink-0 flex items-center gap-0.5">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 목표 분류 자동완성 제안 목록 -->
+            <datalist id="goal-category-suggestions">
+                <option value="건강"></option>
+                <option value="커리어"></option>
+                <option value="재테크"></option>
+                <option value="자기계발"></option>
+                <option value="관계"></option>
+                <option value="취미"></option>
+            </datalist>
+        </section>
 
         <!-- 0. 데일리(일간) 뷰 컨테이너 -->
         <section id="view-daily" class="hidden flex-1 min-h-0 h-full flex flex-col fade-in overflow-hidden">
@@ -425,12 +577,14 @@
         const STORAGE_KEY = 'my_personal_diary_todos_v2';
         const ONELINE_STORAGE_KEY = 'my_personal_diary_oneline_v1';
         const ONELINE_EMOJI_STORAGE_KEY = 'my_personal_diary_oneline_emoji_v1';
+        const GOALS_STORAGE_KEY = 'my_personal_diary_goals_v1';
         const VIEW_STATE_KEY = 'my_personal_diary_view_v2';
         const SYNC_CONFIG_KEY = 'my_personal_diary_sync_cfg_v1';
 
         const DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
         const MOOD_EMOJIS = ['❤️', '☀️', '☁️', '🌧️'];
         const ALL_MOOD_EMOJIS_SET = new Set(MOOD_EMOJIS);
+        const DEFAULT_GOAL_CATEGORIES = ['건강', '커리어', '재테크', '자기계발', '관계', '취미'];
 
         const DateUtils = {
             toDateStr(date) {
@@ -476,6 +630,8 @@
             todos: {},
             onelineEntries: {},
             onelineEmojis: {},
+            goals: [],
+            goalFilterCategory: 'ALL',
             onelineFilterEmoji: 'ALL',
             openEmojiPickerDateStr: null,
             pendingImportData: null,
@@ -560,6 +716,23 @@
             return result;
         }
 
+        function normalizeGoalsList(rawList) {
+            if (!Array.isArray(rawList)) return [];
+            const validScopes = new Set(['long', 'mid', 'year', 'month']);
+            return rawList
+                .filter(it => it && typeof it === 'object' && typeof it.text === 'string' && it.text.trim().length > 0)
+                .map(it => ({
+                    id: it.id || `goal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                    scope: validScopes.has(it.scope) ? it.scope : 'year',
+                    year: Number(it.year) || new Date().getFullYear(),
+                    month: (it.month !== undefined && it.month !== null) ? Number(it.month) : null,
+                    category: (typeof it.category === 'string' && it.category.trim()) ? it.category.trim() : '일반',
+                    text: it.text.trim(),
+                    completed: Boolean(it.completed),
+                    createdAt: it.createdAt || Date.now()
+                }));
+        }
+
         function loadData() {
             try {
                 const saved = localStorage.getItem(STORAGE_KEY);
@@ -572,7 +745,18 @@
                     if (parsed.onelineEmojis) {
                         state.onelineEmojis = normalizeOnelineEmojiMap(parsed.onelineEmojis);
                     }
+                    if (parsed.goals) {
+                        state.goals = normalizeGoalsList(parsed.goals);
+                    }
                     state.updatedAt = parsed.updatedAt || 0;
+                }
+                const savedGoals = localStorage.getItem(GOALS_STORAGE_KEY);
+                if (savedGoals) {
+                    const parsedGoals = JSON.parse(savedGoals);
+                    state.goals = normalizeGoalsList(parsedGoals.goals || parsedGoals);
+                    if (parsedGoals.updatedAt && parsedGoals.updatedAt > state.updatedAt) {
+                        state.updatedAt = parsedGoals.updatedAt;
+                    }
                 }
                 const savedOneline = localStorage.getItem(ONELINE_STORAGE_KEY);
                 if (savedOneline) {
@@ -593,10 +777,8 @@
                         state.updatedAt = parsedEmoji.updatedAt;
                     }
                 }
-                const savedView = localStorage.getItem(VIEW_STATE_KEY);
-                if (savedView === 'monthly' || savedView === 'weekly' || savedView === 'oneline' || savedView === 'daily') {
-                    state.viewMode = savedView;
-                }
+                // 첫 진입 화면은 항상 위클리로 유지
+                state.viewMode = 'weekly';
             } catch (e) {
                 console.error('로컬 데이터 로드 오류:', e);
             }
@@ -608,10 +790,15 @@
                 todos: state.todos,
                 onelineEntries: state.onelineEntries,
                 onelineEmojis: state.onelineEmojis,
+                goals: state.goals,
                 updatedAt: state.updatedAt
             };
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+                localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify({
+                    goals: state.goals,
+                    updatedAt: state.updatedAt
+                }));
                 localStorage.setItem(ONELINE_STORAGE_KEY, JSON.stringify({
                     onelineEntries: state.onelineEntries,
                     onelineEmojis: state.onelineEmojis,
@@ -666,6 +853,7 @@
                     todosJson: JSON.stringify(payload.todos),
                     onelineJson: JSON.stringify(payload.onelineEntries || state.onelineEntries),
                     onelineEmojiJson: JSON.stringify(payload.onelineEmojis || state.onelineEmojis),
+                    goalsJson: JSON.stringify(payload.goals || state.goals),
                     updatedAt: payload.updatedAt
                 });
             } catch (e) {
@@ -693,11 +881,12 @@
 
                 firestoreUnsubscribe = onSnapshot(docRef, (snap) => {
                     if (!snap.exists()) {
-                        if (Object.keys(state.todos).length > 0 || Object.keys(state.onelineEntries).length > 0 || Object.keys(state.onelineEmojis).length > 0) {
+                        if (Object.keys(state.todos).length > 0 || Object.keys(state.onelineEntries).length > 0 || Object.keys(state.onelineEmojis).length > 0 || state.goals.length > 0) {
                             pushToFirestore({
                                 todos: state.todos,
                                 onelineEntries: state.onelineEntries,
                                 onelineEmojis: state.onelineEmojis,
+                                goals: state.goals,
                                 updatedAt: Date.now()
                             });
                         }
@@ -716,14 +905,23 @@
                             const parsedOnelineEmoji = typeof remote.onelineEmojiJson === 'string'
                                 ? JSON.parse(remote.onelineEmojiJson)
                                 : (remote.onelineEmojis || {});
+                            const parsedGoals = typeof remote.goalsJson === 'string'
+                                ? JSON.parse(remote.goalsJson)
+                                : (remote.goals || []);
                             state.todos = normalizeTodosMap(parsedTodos);
                             state.onelineEntries = normalizeOnelineMap(parsedOneline);
                             state.onelineEmojis = normalizeOnelineEmojiMap(parsedOnelineEmoji);
+                            state.goals = normalizeGoalsList(parsedGoals);
                             state.updatedAt = remote.updatedAt;
                             localStorage.setItem(STORAGE_KEY, JSON.stringify({
                                 todos: state.todos,
                                 onelineEntries: state.onelineEntries,
                                 onelineEmojis: state.onelineEmojis,
+                                goals: state.goals,
+                                updatedAt: state.updatedAt
+                            }));
+                            localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify({
+                                goals: state.goals,
                                 updatedAt: state.updatedAt
                             }));
                             localStorage.setItem(ONELINE_STORAGE_KEY, JSON.stringify({
@@ -769,6 +967,9 @@
                         if (data.onelineEmojis) {
                             state.onelineEmojis = normalizeOnelineEmojiMap(data.onelineEmojis);
                         }
+                        if (data.goals) {
+                            state.goals = normalizeGoalsList(data.goals);
+                        }
                         state.updatedAt = data.updatedAt;
                         renderAll();
                         if (state.activeModalDateStr) renderModalTodoList();
@@ -778,7 +979,7 @@
             }
 
             window.addEventListener('storage', (e) => {
-                if ((e.key === STORAGE_KEY || e.key === ONELINE_STORAGE_KEY || e.key === ONELINE_EMOJI_STORAGE_KEY) && e.newValue) {
+                if ((e.key === STORAGE_KEY || e.key === ONELINE_STORAGE_KEY || e.key === ONELINE_EMOJI_STORAGE_KEY || e.key === GOALS_STORAGE_KEY) && e.newValue) {
                     try {
                         const data = JSON.parse(e.newValue);
                         if (data && data.updatedAt > state.updatedAt) {
@@ -786,6 +987,7 @@
                             if (data.todos) state.todos = normalizeTodosMap(data.todos);
                             if (data.onelineEntries) state.onelineEntries = normalizeOnelineMap(data.onelineEntries);
                             if (data.onelineEmojis) state.onelineEmojis = normalizeOnelineEmojiMap(data.onelineEmojis);
+                            if (data.goals) state.goals = normalizeGoalsList(data.goals);
                             state.updatedAt = data.updatedAt;
                             renderAll();
                             if (state.activeModalDateStr) renderModalTodoList();
@@ -1344,6 +1546,7 @@
             const yearSelect = document.getElementById('select-year');
             const monthSelect = document.getElementById('select-month');
             const weekIndicator = document.getElementById('week-indicator');
+            const tabGoals = document.getElementById('tab-goals');
             const tabDaily = document.getElementById('tab-daily');
             const tabWeekly = document.getElementById('tab-weekly');
             const tabMonthly = document.getElementById('tab-monthly');
@@ -1371,87 +1574,400 @@
             const activeCls = 'flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition whitespace-nowrap bg-indigo-600 text-white shadow-sm';
             const inactiveCls = 'flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg text-xs font-semibold transition whitespace-nowrap text-slate-400 hover:text-slate-100';
 
+            if (tabGoals) tabGoals.className = state.viewMode === 'goals' ? activeCls : inactiveCls;
             tabDaily.className = state.viewMode === 'daily' ? activeCls : inactiveCls;
             tabWeekly.className = state.viewMode === 'weekly' ? activeCls : inactiveCls;
             tabMonthly.className = state.viewMode === 'monthly' ? activeCls : inactiveCls;
             tabOneline.className = state.viewMode === 'oneline' ? activeCls : inactiveCls;
         }
 
-        function renderDailyView() {
-            if (!state.selectedDateStr) {
-                state.selectedDateStr = state.todayStr || DateUtils.toDateStr(new Date());
+        function addGoalItem(scope, category, text, targetMonth = null) {
+            const trimmedText = String(text || '').trim();
+            if (!trimmedText) return;
+            const trimmedCat = String(category || '').trim() || '일반';
+            state.goals.push({
+                id: `goal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                scope,
+                year: state.currentYear,
+                month: scope === 'month' ? (targetMonth !== null ? Number(targetMonth) : state.currentMonth) : null,
+                category: trimmedCat,
+                text: trimmedText,
+                completed: false,
+                createdAt: Date.now()
+            });
+            saveData();
+            renderAll();
+        }
+
+        function toggleGoalItem(goalId) {
+            const target = state.goals.find(g => g.id === goalId);
+            if (!target) return;
+            target.completed = !target.completed;
+            saveData();
+            renderAll();
+        }
+
+        function editGoalItemText(goalId, newText) {
+            const target = state.goals.find(g => g.id === goalId);
+            if (!target) return;
+            const trimmed = String(newText || '').trim();
+            if (!trimmed) return;
+            target.text = trimmed;
+            saveData();
+            renderAll();
+        }
+
+        function deleteGoalItem(goalId) {
+            state.goals = state.goals.filter(g => g.id !== goalId);
+            saveData();
+            renderAll();
+        }
+
+        function getGoalsForScope(scope) {
+            return state.goals.filter(g => {
+                if (g.scope !== scope) return false;
+                if (scope === 'year') return g.year === state.currentYear;
+                if (scope === 'month') return g.year === state.currentYear && g.month === state.currentMonth;
+                return true;
+            });
+        }
+
+        function renderGoalsCategoryFilter() {
+            const filterContainer = document.getElementById('goals-category-filter');
+            const datalistEl = document.getElementById('goal-category-suggestions');
+            if (!filterContainer) return;
+
+            const scopes = ['long', 'mid', 'year', 'month'];
+            const visibleGoalsAll = scopes.flatMap(sc => getGoalsForScope(sc));
+            const usedCategories = new Set(visibleGoalsAll.map(g => g.category).filter(Boolean));
+            const allCategories = Array.from(new Set([...usedCategories]));
+
+            if (datalistEl) {
+                const suggestions = Array.from(new Set([...DEFAULT_GOAL_CATEGORIES, ...usedCategories]));
+                datalistEl.innerHTML = suggestions.map(c => `<option value="${escapeHTML(c)}"></option>`).join('');
             }
-            const dateStr = state.selectedDateStr;
+
+            if (state.goalFilterCategory !== 'ALL' && !usedCategories.has(state.goalFilterCategory)) {
+                state.goalFilterCategory = 'ALL';
+            }
+
+            filterContainer.innerHTML = '';
+
+            const allBtn = document.createElement('button');
+            allBtn.type = 'button';
+            allBtn.textContent = '전체 분류';
+            allBtn.className = `px-2 py-0.5 rounded-md text-[11px] font-bold shrink-0 transition ${
+                state.goalFilterCategory === 'ALL'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+            }`;
+            allBtn.addEventListener('click', () => {
+                state.goalFilterCategory = 'ALL';
+                renderGoalsView();
+            });
+            filterContainer.appendChild(allBtn);
+
+            allCategories.forEach(cat => {
+                const count = visibleGoalsAll.filter(g => g.category === cat).length;
+                const isSelected = state.goalFilterCategory === cat;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `px-2 py-0.5 rounded-md text-[11px] font-semibold shrink-0 transition flex items-center gap-1 border ${
+                    isSelected
+                        ? 'bg-indigo-600/35 border-indigo-400 text-white ring-1 ring-indigo-400/50'
+                        : 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700'
+                }`;
+                btn.innerHTML = `<span>#${escapeHTML(cat)}</span><span class="text-[9px] text-indigo-300">${count}</span>`;
+                btn.addEventListener('click', () => {
+                    state.goalFilterCategory = isSelected ? 'ALL' : cat;
+                    renderGoalsView();
+                });
+                filterContainer.appendChild(btn);
+            });
+        }
+
+        function createGoalRowElement(goal, accentBadgeCls) {
+            const row = document.createElement('div');
+            row.className = `group flex items-center justify-between gap-1.5 px-2 py-1.5 rounded-lg border transition ${
+                goal.completed
+                    ? 'bg-slate-800/40 border-slate-800/80'
+                    : 'bg-slate-800/85 border-slate-700/80 hover:border-slate-600'
+            }`;
+
+            const left = document.createElement('div');
+            left.className = 'flex items-center gap-1.5 flex-1 min-w-0';
+
+            const checkbox = document.createElement('button');
+            checkbox.type = 'button';
+            checkbox.className = `w-4 h-4 rounded border flex items-center justify-center shrink-0 transition ${
+                goal.completed
+                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                    : 'border-slate-500 hover:border-indigo-400 bg-slate-900'
+            }`;
+            checkbox.innerHTML = goal.completed ? `<i data-lucide="check" class="w-2.5 h-2.5 stroke-[3]"></i>` : '';
+            checkbox.addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleGoalItem(goal.id);
+            });
+
+            const catBadge = document.createElement('span');
+            catBadge.className = `px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 border ${accentBadgeCls}`;
+            catBadge.textContent = goal.category;
+
+            const textSpan = document.createElement('span');
+            textSpan.className = `text-xs break-words leading-snug flex-1 cursor-pointer select-none ${
+                goal.completed ? 'line-through text-slate-500' : 'text-slate-100 font-medium'
+            }`;
+            textSpan.textContent = goal.text;
+            textSpan.title = '클릭: 달성 전환 / 더블클릭: 수정';
+
+            textSpan.addEventListener('click', () => toggleGoalItem(goal.id));
+            textSpan.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                const editInput = document.createElement('input');
+                editInput.type = 'text';
+                editInput.value = goal.text;
+                editInput.className = 'flex-1 min-w-0 px-1.5 py-0.5 text-xs bg-slate-950 text-white border border-indigo-500 rounded focus:outline-none';
+                const commit = () => {
+                    if (editInput.value.trim()) {
+                        editGoalItemText(goal.id, editInput.value);
+                    } else {
+                        renderGoalsView();
+                    }
+                };
+                editInput.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        commit();
+                    } else if (ev.key === 'Escape') {
+                        renderGoalsView();
+                    }
+                });
+                editInput.addEventListener('blur', commit);
+                left.replaceChild(editInput, textSpan);
+                editInput.focus();
+            });
+
+            left.appendChild(checkbox);
+            left.appendChild(catBadge);
+            left.appendChild(textSpan);
+
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.title = '삭제';
+            delBtn.className = 'opacity-70 sm:opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-rose-400 rounded transition shrink-0';
+            delBtn.innerHTML = `<i data-lucide="trash-2" class="w-3 h-3"></i>`;
+            delBtn.addEventListener('click', () => deleteGoalItem(goal.id));
+
+            row.appendChild(left);
+            row.appendChild(delBtn);
+            return row;
+        }
+
+        function renderGoalsView() {
+            const headerTitle = document.getElementById('goals-header-title');
+            const yearTitle = document.getElementById('goal-title-year');
+            const monthTitle = document.getElementById('goal-title-month');
+            const monthSelect = document.getElementById('goal-month-select');
+
+            if (headerTitle) headerTitle.textContent = `${state.currentYear}년 목표 로드맵`;
+            if (yearTitle) yearTitle.textContent = `${state.currentYear}년 올해목표`;
+            if (monthTitle) monthTitle.textContent = `${state.currentYear}년 ${state.currentMonth + 1}월 월별목표`;
+
+            if (monthSelect) {
+                if (monthSelect.options.length !== 12) {
+                    monthSelect.innerHTML = '';
+                    for (let m = 0; m < 12; m++) {
+                        const opt = document.createElement('option');
+                        opt.value = m;
+                        opt.textContent = `${m + 1}월`;
+                        opt.className = 'bg-slate-800 text-slate-100';
+                        monthSelect.appendChild(opt);
+                    }
+                }
+                monthSelect.value = state.currentMonth;
+            }
+
+            renderGoalsCategoryFilter();
+
+            const scopeMeta = [
+                {
+                    scope: 'long',
+                    listId: 'goal-list-long',
+                    rateId: 'goal-rate-long',
+                    barId: 'goal-bar-long',
+                    badgeCls: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
+                    emptyText: '등록된 장기목표(5y↑)가 없습니다.'
+                },
+                {
+                    scope: 'mid',
+                    listId: 'goal-list-mid',
+                    rateId: 'goal-rate-mid',
+                    barId: 'goal-bar-mid',
+                    badgeCls: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
+                    emptyText: '등록된 중기목표(5y)가 없습니다.'
+                },
+                {
+                    scope: 'year',
+                    listId: 'goal-list-year',
+                    rateId: 'goal-rate-year',
+                    barId: 'goal-bar-year',
+                    badgeCls: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+                    emptyText: `${state.currentYear}년 올해목표가 없습니다.`
+                },
+                {
+                    scope: 'month',
+                    listId: 'goal-list-month',
+                    rateId: 'goal-rate-month',
+                    barId: 'goal-bar-month',
+                    badgeCls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+                    emptyText: `${state.currentMonth + 1}월 월별목표가 없습니다.`
+                }
+            ];
+
+            let totalAll = 0;
+            let completedAll = 0;
+
+            scopeMeta.forEach(meta => {
+                const listEl = document.getElementById(meta.listId);
+                const rateEl = document.getElementById(meta.rateId);
+                const barEl = document.getElementById(meta.barId);
+                if (!listEl) return;
+
+                let items = getGoalsForScope(meta.scope);
+                if (state.goalFilterCategory !== 'ALL') {
+                    items = items.filter(g => g.category === state.goalFilterCategory);
+                }
+
+                const total = items.length;
+                const completed = items.filter(g => g.completed).length;
+                const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+                totalAll += total;
+                completedAll += completed;
+
+                if (rateEl) rateEl.textContent = `${percent}%`;
+                if (barEl) barEl.style.width = `${percent}%`;
+
+                listEl.innerHTML = '';
+                if (items.length === 0) {
+                    listEl.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-600 text-center py-4">${escapeHTML(meta.emptyText)}</div>`;
+                } else {
+                    items.forEach(g => {
+                        listEl.appendChild(createGoalRowElement(g, meta.badgeCls));
+                    });
+                }
+            });
+
+            const overallPercent = totalAll > 0 ? Math.round((completedAll / totalAll) * 100) : 0;
+            const overallRateEl = document.getElementById('goals-overall-rate');
+            const overallCountEl = document.getElementById('goals-overall-count');
+            if (overallRateEl) overallRateEl.textContent = `${overallPercent}%`;
+            if (overallCountEl) overallCountEl.textContent = `(${completedAll}/${totalAll})`;
+        }
+
+        function renderDailyView() {
+            const targetDateStr = state.selectedDateStr || state.todayStr || DateUtils.toDateStr(new Date());
+            state.selectedDateStr = targetDateStr;
 
             const dateLabel = document.getElementById('daily-date-label');
             const datePicker = document.getElementById('daily-date-picker');
-            const todoListEl = document.getElementById('daily-todo-list');
-            const eventListEl = document.getElementById('daily-event-list');
             const todoCountEl = document.getElementById('daily-todo-count');
             const eventCountEl = document.getElementById('daily-event-count');
+            const todoListEl = document.getElementById('daily-todo-list');
+            const eventListEl = document.getElementById('daily-event-list');
             const emojiSelectorEl = document.getElementById('daily-emoji-selector');
             const onelineInputEl = document.getElementById('daily-oneline-input');
             const onelineStatusEl = document.getElementById('daily-oneline-status');
 
-            if (dateLabel) dateLabel.textContent = DateUtils.formatKoreanFull(dateStr);
-            if (datePicker) datePicker.value = dateStr;
+            if (dateLabel) dateLabel.textContent = DateUtils.formatKoreanFull(targetDateStr);
+            if (datePicker) datePicker.value = targetDateStr;
 
-            const dayItems = state.todos[dateStr] || [];
+            const dayItems = state.todos[targetDateStr] || [];
             const todoItems = dayItems.filter(it => it.type !== 'event');
             const eventItems = dayItems.filter(it => it.type === 'event');
 
             if (todoCountEl) todoCountEl.textContent = `${todoItems.filter(t => t.completed).length}/${todoItems.length}`;
             if (eventCountEl) eventCountEl.textContent = `${eventItems.length}`;
 
-            todoListEl.innerHTML = '';
-            if (todoItems.length === 0) {
-                todoListEl.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-600">등록된 할 일이 없습니다.</div>`;
-            } else {
-                todoItems.forEach(item => {
-                    todoListEl.appendChild(createTodoItemElement(dateStr, item, false));
-                });
+            if (todoListEl) {
+                todoListEl.innerHTML = '';
+                if (todoItems.length === 0) {
+                    todoListEl.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-600 py-8">등록된 할 일이 없습니다.</div>`;
+                } else {
+                    todoItems.forEach(item => {
+                        todoListEl.appendChild(createTodoItemElement(targetDateStr, item, false));
+                    });
+                }
             }
 
-            eventListEl.innerHTML = '';
-            if (eventItems.length === 0) {
-                eventListEl.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-600">등록된 이벤트/메모가 없습니다.</div>`;
-            } else {
-                eventItems.forEach(item => {
-                    eventListEl.appendChild(createTodoItemElement(dateStr, item, false));
-                });
+            if (eventListEl) {
+                eventListEl.innerHTML = '';
+                if (eventItems.length === 0) {
+                    eventListEl.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-600 py-8">등록된 이벤트/메모가 없습니다.</div>`;
+                } else {
+                    eventItems.forEach(item => {
+                        eventListEl.appendChild(createTodoItemElement(targetDateStr, item, false));
+                    });
+                }
             }
 
-            const currentEmoji = state.onelineEmojis[dateStr] || '';
-            const currentOneline = state.onelineEntries[dateStr] || '';
-
-            if (onelineInputEl) {
-                onelineInputEl.value = currentOneline;
-            }
-            if (onelineStatusEl) {
-                onelineStatusEl.textContent = (currentEmoji || currentOneline) ? '기록됨' : '비어있음';
-            }
+            const currentEmoji = state.onelineEmojis[targetDateStr] || '';
+            const currentOneline = state.onelineEntries[targetDateStr] || '';
 
             if (emojiSelectorEl) {
                 emojiSelectorEl.innerHTML = '';
-                const choices = currentEmoji && !ALL_MOOD_EMOJIS_SET.has(currentEmoji)
-                    ? [currentEmoji, ...MOOD_EMOJIS]
-                    : MOOD_EMOJIS;
-
-                choices.forEach((em) => {
+                MOOD_EMOJIS.forEach(em => {
                     const btn = document.createElement('button');
                     btn.type = 'button';
-                    const selected = currentEmoji === em;
-                    btn.className = `px-2.5 py-1 rounded-xl text-sm border transition active:scale-95 ${
-                        selected
-                            ? 'bg-indigo-600/35 border-indigo-400 text-white ring-1 ring-indigo-400/50'
-                            : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                    const isSelected = currentEmoji === em;
+                    btn.className = `px-2.5 py-1 rounded-xl text-base border transition active:scale-95 ${
+                        isSelected
+                            ? 'bg-indigo-600/40 border-indigo-400 ring-1 ring-indigo-400/60'
+                            : 'bg-slate-800 border-slate-700 hover:bg-slate-700'
                     }`;
                     btn.textContent = em;
                     btn.addEventListener('click', () => {
-                        setOnelineEmoji(dateStr, selected ? '' : em);
+                        setOnelineEmoji(targetDateStr, isSelected ? '' : em);
                     });
                     emojiSelectorEl.appendChild(btn);
                 });
+            }
+
+            if (onelineInputEl && document.activeElement !== onelineInputEl) {
+                onelineInputEl.value = currentOneline;
+            }
+            if (onelineStatusEl) {
+                onelineStatusEl.textContent = currentOneline ? '저장됨' : '미작성';
+            }
+        }
+
+        async function exportGoalsTabAsImage() {
+            const captureEl = document.getElementById('goals-capture-area');
+            if (!captureEl) return;
+            if (typeof html2canvas === 'undefined') {
+                showToast('이미지 캡처 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도해주세요.', 'error');
+                return;
+            }
+            try {
+                showToast('목표 화면 이미지를 생성하고 있습니다...', 'info');
+                const canvas = await html2canvas(captureEl, {
+                    backgroundColor: '#0B1120',
+                    scale: 2,
+                    useCORS: true
+                });
+                const dataUrl = canvas.toDataURL('image/png');
+                const a = document.createElement('a');
+                const filterSuffix = state.goalFilterCategory !== 'ALL' ? `-${state.goalFilterCategory}` : '';
+                a.href = dataUrl;
+                a.download = `goals-${state.currentYear}-${String(state.currentMonth + 1).padStart(2, '0')}${filterSuffix}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast('목표 탭 이미지(PNG)가 저장되었습니다!', 'success');
+            } catch (err) {
+                console.error('목표 이미지 저장 오류:', err);
+                showToast('이미지 저장 중 오류가 발생했습니다.', 'error');
             }
         }
 
@@ -1919,17 +2435,22 @@
         function renderAll() {
             updateHeaderControls();
 
+            const goalsSection = document.getElementById('view-goals');
             const dailySection = document.getElementById('view-daily');
             const monthlySection = document.getElementById('view-monthly');
             const weeklySection = document.getElementById('view-weekly');
             const onelineSection = document.getElementById('view-oneline');
 
+            if (goalsSection) goalsSection.classList.add('hidden');
             dailySection.classList.add('hidden');
             weeklySection.classList.add('hidden');
             monthlySection.classList.add('hidden');
             onelineSection.classList.add('hidden');
 
-            if (state.viewMode === 'daily') {
+            if (state.viewMode === 'goals') {
+                goalsSection.classList.remove('hidden');
+                renderGoalsView();
+            } else if (state.viewMode === 'daily') {
                 dailySection.classList.remove('hidden');
                 renderDailyView();
             } else if (state.viewMode === 'weekly') {
@@ -1962,6 +2483,45 @@
             window.addEventListener('mouseup', handleGlobalPointerUp);
             window.addEventListener('touchend', handleGlobalPointerUp);
             window.addEventListener('touchcancel', handleGlobalPointerUp);
+
+            document.getElementById('tab-goals').addEventListener('click', () => {
+                state.viewMode = 'goals';
+                localStorage.setItem(VIEW_STATE_KEY, 'goals');
+                renderAll();
+            });
+
+            document.querySelectorAll('.goal-add-form').forEach(form => {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const scope = form.dataset.goalScope;
+                    const catInput = form.querySelector('input[name="category"]');
+                    const textInput = form.querySelector('input[name="text"]');
+                    const monthSel = form.querySelector('select[name="targetMonth"]');
+                    if (!textInput || !textInput.value.trim()) return;
+                    const chosenMonth = monthSel ? Number(monthSel.value) : null;
+                    if (scope === 'month' && chosenMonth !== null && !Number.isNaN(chosenMonth)) {
+                        state.currentMonth = chosenMonth;
+                    }
+                    addGoalItem(scope, catInput ? catInput.value : '일반', textInput.value, chosenMonth);
+                    textInput.value = '';
+                });
+            });
+
+            const goalMonthSelectEl = document.getElementById('goal-month-select');
+            if (goalMonthSelectEl) {
+                goalMonthSelectEl.addEventListener('change', (e) => {
+                    const m = Number(e.target.value);
+                    if (!Number.isNaN(m)) {
+                        state.currentMonth = m;
+                        renderAll();
+                    }
+                });
+            }
+
+            const exportGoalsImgBtn = document.getElementById('btn-export-goals-image');
+            if (exportGoalsImgBtn) {
+                exportGoalsImgBtn.addEventListener('click', exportGoalsTabAsImage);
+            }
 
             document.getElementById('tab-daily').addEventListener('click', () => {
                 state.viewMode = 'daily';
@@ -2262,6 +2822,7 @@
                     todos: state.todos,
                     onelineEntries: state.onelineEntries,
                     onelineEmojis: state.onelineEmojis,
+                    goals: state.goals,
                     updatedAt: state.updatedAt || Date.now()
                 };
                 const dataStr = JSON.stringify(exportPayload, null, 2);
@@ -2291,7 +2852,8 @@
                         state.pendingImportData = {
                             todos: normalizeTodosMap(parsed.todos || parsed),
                             onelineEntries: normalizeOnelineMap(parsed.onelineEntries || {}),
-                            onelineEmojis: normalizeOnelineEmojiMap(parsed.onelineEmojis || {})
+                            onelineEmojis: normalizeOnelineEmojiMap(parsed.onelineEmojis || {}),
+                            goals: normalizeGoalsList(parsed.goals || [])
                         };
                         document.getElementById('confirm-modal').classList.remove('hidden');
                     } catch (err) {
@@ -2312,6 +2874,7 @@
                     state.todos = state.pendingImportData.todos || {};
                     state.onelineEntries = state.pendingImportData.onelineEntries || {};
                     state.onelineEmojis = state.pendingImportData.onelineEmojis || {};
+                    state.goals = state.pendingImportData.goals || [];
                     saveData();
                     renderAll();
                     showToast('데이터가 성공적으로 복원 및 동기화되었습니다!', 'success');
