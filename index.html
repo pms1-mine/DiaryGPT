@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>index.html</title>
     <!-- Tailwind CSS 로드 -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <!-- Pretendard 웹폰트 로드 (가독성이 뛰어난 한글 모던 폰트) -->
     <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
     <!-- Lucide 아이콘 로드 -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.460.0/lucide.min.js"></script>
     <!-- 목표 탭 이미지 캡처(PNG 저장)용 html2canvas 로드 -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     
@@ -2204,7 +2204,7 @@
                     const isEvent = item.type === 'event';
 
                     if (isEvent) {
-                        const eventTextColor = item.completed ? 'text-emerald-400' : 'text-blue-400';
+                        const eventTextColor = item.completed ? 'text-emerald-600' : 'text-emerald-400';
                         itemEl.className = `text-[10px] sm:text-[11px] truncate px-1 py-0.2 rounded bg-blue-950/35 ${eventTextColor} font-semibold flex items-center gap-1`;
                         itemEl.innerHTML = `
                             <span class="w-1.5 h-1.5 rounded-full shrink-0 ${item.completed ? 'bg-emerald-400' : 'bg-blue-400'}"></span>
@@ -2292,7 +2292,7 @@
             const textSpan = document.createElement('span');
             let textColorClass = 'text-slate-100 font-medium';
             if (isEvent) {
-                textColorClass = item.completed ? 'text-emerald-400 font-medium' : 'text-sky-300 font-medium';
+                textColorClass = item.completed ? 'text-emerald-600 font-medium' : 'text-emerald-400 font-medium';
             } else if (item.completed) {
                 textColorClass = 'line-through text-slate-500';
             }
