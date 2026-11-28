@@ -358,7 +358,7 @@
                 </div>
             </div>
 
-            <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-2 overflow-hidden">
+            <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-4 gap-2 overflow-hidden">
                 <!-- 할 일 칸 -->
                 <div class="min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/90 border border-slate-800 overflow-hidden">
                     <div class="shrink-0 px-3 py-1.5 bg-slate-800/60 border-b border-slate-800 flex items-center justify-between">
@@ -415,6 +415,32 @@
                                 <span>저장</span>
                             </button>
                         </div>
+                    </form>
+                </div>
+
+                <!-- 루틴 칸 -->
+                <div class="min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/90 border border-slate-800 overflow-hidden">
+                    <div class="shrink-0 px-3 py-1.5 bg-amber-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
+                        <span class="text-xs font-bold text-amber-300 flex items-center gap-1">
+                            <i data-lucide="repeat" class="w-3.5 h-3.5"></i>
+                            <span>루틴</span>
+                        </span>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-14 sm:w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div id="routine-bar" class="h-full bg-amber-400 transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <span id="routine-rate" class="text-[11px] font-bold text-amber-300 min-w-[30px] text-right">0%</span>
+                            <span id="routine-count" class="text-[10px] font-semibold text-slate-400">0/0</span>
+                        </div>
+                    </div>
+                    <div id="routine-list" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5"></div>
+                    <form id="routine-form" class="shrink-0 p-2 border-t border-slate-800 flex gap-1.5 bg-slate-900">
+                        <input type="text" id="routine-input" placeholder="루틴을 입력하세요..." autocomplete="off"
+                            class="flex-1 min-w-0 px-2.5 py-1.5 text-xs bg-slate-800 text-slate-100 placeholder-slate-500 border border-slate-700 rounded-xl focus:outline-none focus:border-amber-400">
+                        <button type="submit" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold rounded-xl transition active:scale-95 flex items-center gap-1 shrink-0">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            <span>추가</span>
+                        </button>
                     </form>
                 </div>
             </div>
@@ -592,6 +618,24 @@
         const ALL_MOOD_EMOJIS_SET = new Set(MOOD_EMOJIS);
         const DEFAULT_GOAL_CATEGORIES = ['건강', '커리어', '재테크', '자기계발', '관계', '취미'];
 
+        // 대한민국(Asia/Seoul) 기준 현재 시각을 반환 (기기 시간대와 무관)
+        function nowKST() {
+            try {
+                const parts = new Intl.DateTimeFormat('en-US', {
+                    timeZone: 'Asia/Seoul',
+                    year: 'numeric', month: 'numeric', day: 'numeric',
+                    hour: 'numeric', minute: 'numeric', second: 'numeric',
+                    hourCycle: 'h23'
+                }).formatToParts(new Date());
+                const v = {};
+                parts.forEach(pt => { v[pt.type] = Number(pt.value); });
+                return new Date(v.year, v.month - 1, v.day, v.hour % 24, v.minute, v.second);
+            } catch (e) {
+                const utc = Date.now() + new Date().getTimezoneOffset() * 60000;
+                return new Date(utc + 9 * 3600000);
+            }
+        }
+
         const DateUtils = {
             toDateStr(date) {
                 const d = new Date(date);
@@ -626,8 +670,8 @@
 
         let state = {
             viewMode: 'weekly',
-            currentYear: new Date().getFullYear(),
-            currentMonth: new Date().getMonth(),
+            currentYear: nowKST().getFullYear(),
+            currentMonth: nowKST().getMonth(),
             selectedDateStr: '',
             selectedWeekStart: null,
             todayStr: '',
@@ -637,6 +681,8 @@
             onelineEntries: {},
             onelineEmojis: {},
             goals: [],
+            routines: [],
+            routineChecks: {},
             goalFilterCategory: 'ALL',
             onelineFilterEmoji: 'ALL',
             openEmojiPickerDateStr: null,
@@ -722,6 +768,25 @@
             return result;
         }
 
+        function normalizeRoutines(rawList) {
+            if (!Array.isArray(rawList)) return [];
+            return rawList
+                .filter(r => r && typeof r.text === 'string' && r.text.trim())
+                .map(r => ({
+                    id: String(r.id || `routine-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`),
+                    text: r.text.trim()
+                }));
+        }
+
+        function normalizeRoutineChecks(raw) {
+            const out = {};
+            if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+            Object.keys(raw).forEach(k => {
+                if (Array.isArray(raw[k]) && raw[k].length > 0) out[k] = raw[k].map(String);
+            });
+            return out;
+        }
+
         function normalizeGoalsList(rawList) {
             if (!Array.isArray(rawList)) return [];
             const validScopes = new Set(['long', 'mid', 'year', 'month']);
@@ -730,7 +795,7 @@
                 .map(it => ({
                     id: it.id || `goal-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
                     scope: validScopes.has(it.scope) ? it.scope : 'year',
-                    year: Number(it.year) || new Date().getFullYear(),
+                    year: Number(it.year) || nowKST().getFullYear(),
                     month: (it.month !== undefined && it.month !== null) ? Number(it.month) : null,
                     category: (typeof it.category === 'string' && it.category.trim()) ? it.category.trim() : '일반',
                     text: it.text.trim(),
@@ -754,6 +819,8 @@
                     if (parsed.goals) {
                         state.goals = normalizeGoalsList(parsed.goals);
                     }
+                    if (parsed.routines) state.routines = normalizeRoutines(parsed.routines);
+                    if (parsed.routineChecks) state.routineChecks = normalizeRoutineChecks(parsed.routineChecks);
                     state.updatedAt = parsed.updatedAt || 0;
                 }
                 const savedGoals = localStorage.getItem(GOALS_STORAGE_KEY);
@@ -797,6 +864,8 @@
                 onelineEntries: state.onelineEntries,
                 onelineEmojis: state.onelineEmojis,
                 goals: state.goals,
+                routines: state.routines,
+                routineChecks: state.routineChecks,
                 updatedAt: state.updatedAt
             };
             try {
@@ -860,6 +929,8 @@
                     onelineJson: JSON.stringify(payload.onelineEntries || state.onelineEntries),
                     onelineEmojiJson: JSON.stringify(payload.onelineEmojis || state.onelineEmojis),
                     goalsJson: JSON.stringify(payload.goals || state.goals),
+                    routinesJson: JSON.stringify(payload.routines || state.routines),
+                    routineChecksJson: JSON.stringify(payload.routineChecks || state.routineChecks),
                     updatedAt: payload.updatedAt
                 });
             } catch (e) {
@@ -893,6 +964,8 @@
                                 onelineEntries: state.onelineEntries,
                                 onelineEmojis: state.onelineEmojis,
                                 goals: state.goals,
+                                routines: state.routines,
+                                routineChecks: state.routineChecks,
                                 updatedAt: Date.now()
                             });
                         }
@@ -918,12 +991,16 @@
                             state.onelineEntries = normalizeOnelineMap(parsedOneline);
                             state.onelineEmojis = normalizeOnelineEmojiMap(parsedOnelineEmoji);
                             state.goals = normalizeGoalsList(parsedGoals);
+                            if (typeof remote.routinesJson === 'string') state.routines = normalizeRoutines(JSON.parse(remote.routinesJson));
+                            if (typeof remote.routineChecksJson === 'string') state.routineChecks = normalizeRoutineChecks(JSON.parse(remote.routineChecksJson));
                             state.updatedAt = remote.updatedAt;
                             localStorage.setItem(STORAGE_KEY, JSON.stringify({
                                 todos: state.todos,
                                 onelineEntries: state.onelineEntries,
                                 onelineEmojis: state.onelineEmojis,
                                 goals: state.goals,
+                                routines: state.routines,
+                                routineChecks: state.routineChecks,
                                 updatedAt: state.updatedAt
                             }));
                             localStorage.setItem(GOALS_STORAGE_KEY, JSON.stringify({
@@ -976,6 +1053,8 @@
                         if (data.goals) {
                             state.goals = normalizeGoalsList(data.goals);
                         }
+                        if (data.routines) state.routines = normalizeRoutines(data.routines);
+                        if (data.routineChecks) state.routineChecks = normalizeRoutineChecks(data.routineChecks);
                         state.updatedAt = data.updatedAt;
                         renderAll();
                         if (state.activeModalDateStr) renderModalTodoList();
@@ -994,6 +1073,8 @@
                             if (data.onelineEntries) state.onelineEntries = normalizeOnelineMap(data.onelineEntries);
                             if (data.onelineEmojis) state.onelineEmojis = normalizeOnelineEmojiMap(data.onelineEmojis);
                             if (data.goals) state.goals = normalizeGoalsList(data.goals);
+                            if (data.routines) state.routines = normalizeRoutines(data.routines);
+                            if (data.routineChecks) state.routineChecks = normalizeRoutineChecks(data.routineChecks);
                             state.updatedAt = data.updatedAt;
                             renderAll();
                             if (state.activeModalDateStr) renderModalTodoList();
@@ -1280,14 +1361,16 @@
         }
 
         function syncTodayDate(isInitial = false) {
-            const now = new Date();
+            const now = nowKST();
             const newTodayStr = DateUtils.toDateStr(now);
             const changed = (state.todayStr && state.todayStr !== newTodayStr);
             state.todayStr = newTodayStr;
 
             const headerTodayEl = document.getElementById('header-today-text');
             if (headerTodayEl) {
-                headerTodayEl.textContent = `오늘: ${DateUtils.formatKoreanFull(newTodayStr)}`;
+                const hh = now.getHours();
+                const timeText = `${hh < 12 ? '오전' : '오후'} ${hh % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`;
+                headerTodayEl.textContent = `오늘: ${DateUtils.formatKoreanFull(newTodayStr)} ${timeText}`;
             }
 
             if (changed && !isInitial) {
@@ -1511,7 +1594,7 @@
         function initDateSelectors() {
             const yearSelect = document.getElementById('select-year');
             const monthSelect = document.getElementById('select-month');
-            const baseYear = new Date().getFullYear();
+            const baseYear = nowKST().getFullYear();
 
             yearSelect.innerHTML = '';
             for (let y = baseYear - 10; y <= baseYear + 10; y++) {
@@ -1902,7 +1985,7 @@
         }
 
         function renderDailyView() {
-            const targetDateStr = state.selectedDateStr || state.todayStr || DateUtils.toDateStr(new Date());
+            const targetDateStr = state.selectedDateStr || state.todayStr || DateUtils.toDateStr(nowKST());
             state.selectedDateStr = targetDateStr;
 
             const dateLabel = document.getElementById('daily-date-label');
@@ -2083,7 +2166,7 @@
             grid.innerHTML = '';
 
             if (!state.selectedWeekStart) {
-                state.selectedWeekStart = DateUtils.getStartOfWeek(new Date());
+                state.selectedWeekStart = DateUtils.getStartOfWeek(nowKST());
             }
 
             const startOfWeek = new Date(state.selectedWeekStart);
@@ -2538,6 +2621,126 @@
             lucide.createIcons();
         }
 
+        function addRoutine(text) {
+            const t = String(text || '').trim();
+            if (!t) return;
+            state.routines.push({
+                id: `routine-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+                text: t
+            });
+            saveData();
+            renderAll();
+        }
+
+        function toggleRoutine(dateStr, id) {
+            const list = state.routineChecks[dateStr] ? [...state.routineChecks[dateStr]] : [];
+            const idx = list.indexOf(id);
+            if (idx >= 0) list.splice(idx, 1); else list.push(id);
+            if (list.length > 0) state.routineChecks[dateStr] = list;
+            else delete state.routineChecks[dateStr];
+            saveData();
+            renderAll();
+        }
+
+        function editRoutineText(id, text) {
+            const t = String(text || '').trim();
+            const r = state.routines.find(x => x.id === id);
+            if (r && t) r.text = t;
+            saveData();
+            renderAll();
+        }
+
+        function deleteRoutine(id) {
+            state.routines = state.routines.filter(r => r.id !== id);
+            Object.keys(state.routineChecks).forEach(k => {
+                state.routineChecks[k] = state.routineChecks[k].filter(x => x !== id);
+                if (state.routineChecks[k].length === 0) delete state.routineChecks[k];
+            });
+            saveData();
+            renderAll();
+        }
+
+        function renderRoutineCard() {
+            const listEl = document.getElementById('routine-list');
+            if (!listEl) return;
+            const dateStr = state.selectedDateStr || state.todayStr;
+            const checked = new Set(state.routineChecks[dateStr] || []);
+            const total = state.routines.length;
+            const done = state.routines.filter(r => checked.has(r.id)).length;
+            const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+
+            const barEl = document.getElementById('routine-bar');
+            const rateEl = document.getElementById('routine-rate');
+            const countEl = document.getElementById('routine-count');
+            if (barEl) barEl.style.width = `${percent}%`;
+            if (rateEl) rateEl.textContent = `${percent}%`;
+            if (countEl) countEl.textContent = `${done}/${total}`;
+
+            listEl.innerHTML = '';
+            if (total === 0) {
+                listEl.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-600 py-8 text-center">등록된 루틴이 없습니다.</div>`;
+                return;
+            }
+            state.routines.forEach(r => {
+                const isDone = checked.has(r.id);
+                const row = document.createElement('div');
+                row.className = `group flex items-center justify-between gap-1.5 p-2.5 rounded-lg border transition ${
+                    isDone ? 'bg-slate-800/40 border-slate-800/80' : 'bg-slate-800/90 border-slate-700/80 hover:border-amber-500/50'
+                }`;
+
+                const left = document.createElement('div');
+                left.className = 'flex items-center gap-2 flex-1 min-w-0';
+
+                const checkbox = document.createElement('button');
+                checkbox.type = 'button';
+                checkbox.className = `w-4 h-4 rounded border flex items-center justify-center shrink-0 transition ${
+                    isDone ? 'bg-amber-500 border-amber-500 text-white' : 'border-slate-500 hover:border-amber-400 bg-slate-900'
+                }`;
+                checkbox.innerHTML = isDone ? `<i data-lucide="check" class="w-2.5 h-2.5 stroke-[3]"></i>` : '';
+                checkbox.addEventListener('click', () => toggleRoutine(dateStr, r.id));
+
+                const textSpan = document.createElement('span');
+                textSpan.className = `text-sm break-words leading-snug flex-1 cursor-pointer select-none ${
+                    isDone ? 'line-through text-slate-500' : 'text-slate-100 font-medium'
+                }`;
+                textSpan.textContent = r.text;
+                textSpan.title = '클릭: 체크 전환 / 더블클릭: 수정';
+                textSpan.addEventListener('click', () => toggleRoutine(dateStr, r.id));
+                textSpan.addEventListener('dblclick', (e) => {
+                    e.stopPropagation();
+                    const editInput = document.createElement('input');
+                    editInput.type = 'text';
+                    editInput.value = r.text;
+                    editInput.className = 'flex-1 min-w-0 px-1.5 py-0.5 text-sm bg-slate-950 text-white border border-amber-500 rounded focus:outline-none';
+                    const commit = () => {
+                        if (editInput.value.trim()) editRoutineText(r.id, editInput.value);
+                        else renderAll();
+                    };
+                    editInput.addEventListener('keydown', (ev) => {
+                        if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
+                        else if (ev.key === 'Escape') renderAll();
+                    });
+                    editInput.addEventListener('blur', commit);
+                    left.replaceChild(editInput, textSpan);
+                    editInput.focus();
+                });
+
+                left.appendChild(checkbox);
+                left.appendChild(textSpan);
+
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.title = '루틴 삭제';
+                delBtn.className = 'opacity-70 sm:opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-rose-400 rounded transition shrink-0';
+                delBtn.innerHTML = `<i data-lucide="trash-2" class="w-3 h-3"></i>`;
+                delBtn.addEventListener('click', () => deleteRoutine(r.id));
+
+                row.appendChild(left);
+                row.appendChild(delBtn);
+                listEl.appendChild(row);
+            });
+        }
+
         function renderAll() {
             updateHeaderControls();
 
@@ -2559,6 +2762,7 @@
             } else if (state.viewMode === 'daily') {
                 dailySection.classList.remove('hidden');
                 renderDailyView();
+                renderRoutineCard();
             } else if (state.viewMode === 'weekly') {
                 weeklySection.classList.remove('hidden');
                 renderWeeklyView();
@@ -2638,11 +2842,11 @@
                 state.viewMode = 'daily';
                 localStorage.setItem(VIEW_STATE_KEY, 'daily');
                 if (!state.selectedDateStr) {
-                    state.selectedDateStr = state.todayStr || DateUtils.toDateStr(new Date());
+                    state.selectedDateStr = state.todayStr || DateUtils.toDateStr(nowKST());
                 } else {
                     const sel = DateUtils.parseDateStr(state.selectedDateStr);
                     if (sel.getFullYear() !== state.currentYear || sel.getMonth() !== state.currentMonth) {
-                        const today = new Date();
+                        const today = nowKST();
                         if (today.getFullYear() === state.currentYear && today.getMonth() === state.currentMonth) {
                             state.selectedDateStr = state.todayStr || DateUtils.toDateStr(today);
                         } else {
@@ -2667,7 +2871,7 @@
                 if (!state.selectedWeekStart ||
                     state.selectedWeekStart.getFullYear() !== state.currentYear ||
                     state.selectedWeekStart.getMonth() !== state.currentMonth) {
-                    const today = new Date();
+                    const today = nowKST();
                     if (today.getFullYear() === state.currentYear && today.getMonth() === state.currentMonth) {
                         state.selectedWeekStart = DateUtils.getStartOfWeek(today);
                     } else {
@@ -2720,7 +2924,7 @@
             });
 
             document.getElementById('oneline-go-today-month').addEventListener('click', () => {
-                const now = new Date();
+                const now = nowKST();
                 state.currentYear = now.getFullYear();
                 state.currentMonth = now.getMonth();
                 syncTodayDate(false);
@@ -2750,7 +2954,7 @@
             document.getElementById('daily-go-today').addEventListener('click', () => {
                 syncTodayDate(false);
                 state.selectedDateStr = state.todayStr;
-                const now = new Date();
+                const now = nowKST();
                 state.currentYear = now.getFullYear();
                 state.currentMonth = now.getMonth();
                 renderAll();
@@ -2772,6 +2976,15 @@
                 const targetDate = state.selectedDateStr || state.todayStr;
                 if (targetDate && input.value.trim()) {
                     addItem(targetDate, input.value, 'event');
+                    input.value = '';
+                }
+            });
+
+            document.getElementById('routine-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('routine-input');
+                if (input.value.trim()) {
+                    addRoutine(input.value);
                     input.value = '';
                 }
             });
@@ -2799,7 +3012,7 @@
                     const base = DateUtils.parseDateStr(state.selectedDateStr || state.todayStr);
                     base.setDate(base.getDate() - 1);
                     state.selectedDateStr = DateUtils.toDateStr(base);
-                } else if (state.viewMode === 'monthly') {
+                } else if (['monthly', 'oneline', 'goals'].includes(state.viewMode)) {
                     state.currentMonth--;
                     if (state.currentMonth < 0) {
                         state.currentMonth = 11;
@@ -2816,7 +3029,7 @@
                     const base = DateUtils.parseDateStr(state.selectedDateStr || state.todayStr);
                     base.setDate(base.getDate() + 1);
                     state.selectedDateStr = DateUtils.toDateStr(base);
-                } else if (state.viewMode === 'monthly') {
+                } else if (['monthly', 'oneline', 'goals'].includes(state.viewMode)) {
                     state.currentMonth++;
                     if (state.currentMonth > 11) {
                         state.currentMonth = 0;
@@ -2848,7 +3061,7 @@
             document.getElementById('btn-next-day').addEventListener('click', () => stepOneDay(1));
 
             document.getElementById('btn-today').addEventListener('click', () => {
-                const now = new Date();
+                const now = nowKST();
                 state.currentYear = now.getFullYear();
                 state.currentMonth = now.getMonth();
                 state.selectedWeekStart = DateUtils.getStartOfWeek(now);
@@ -2953,6 +3166,8 @@
                     onelineEntries: state.onelineEntries,
                     onelineEmojis: state.onelineEmojis,
                     goals: state.goals,
+                    routines: state.routines,
+                    routineChecks: state.routineChecks,
                     updatedAt: state.updatedAt || Date.now()
                 };
                 const dataStr = JSON.stringify(exportPayload, null, 2);
@@ -2983,7 +3198,9 @@
                             todos: normalizeTodosMap(parsed.todos || parsed),
                             onelineEntries: normalizeOnelineMap(parsed.onelineEntries || {}),
                             onelineEmojis: normalizeOnelineEmojiMap(parsed.onelineEmojis || {}),
-                            goals: normalizeGoalsList(parsed.goals || [])
+                            goals: normalizeGoalsList(parsed.goals || []),
+                            routines: normalizeRoutines(parsed.routines || []),
+                            routineChecks: normalizeRoutineChecks(parsed.routineChecks || {})
                         };
                         document.getElementById('confirm-modal').classList.remove('hidden');
                     } catch (err) {
@@ -3005,6 +3222,8 @@
                     state.onelineEntries = state.pendingImportData.onelineEntries || {};
                     state.onelineEmojis = state.pendingImportData.onelineEmojis || {};
                     state.goals = state.pendingImportData.goals || [];
+                state.routines = state.pendingImportData.routines || [];
+                state.routineChecks = state.pendingImportData.routineChecks || {};
                     saveData();
                     renderAll();
                     showToast('데이터가 성공적으로 복원 및 동기화되었습니다!', 'success');
@@ -3018,7 +3237,7 @@
             loadData();
             syncTodayDate(true);
             state.selectedDateStr = state.todayStr;
-            state.selectedWeekStart = DateUtils.getStartOfWeek(new Date());
+            state.selectedWeekStart = DateUtils.getStartOfWeek(nowKST());
             initDateSelectors();
             initEventListeners();
             renderAll();
