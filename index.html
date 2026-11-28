@@ -221,7 +221,7 @@
                     <div class="shrink-0 px-3 py-1.5 bg-violet-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
                         <div class="flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full bg-violet-400"></span>
-                            <h2 class="text-xs sm:text-sm font-extrabold text-violet-200">장기목표 <span class="text-[11px] font-semibold text-violet-400">(5y↑)</span></h2>
+                            <h2 class="text-xs sm:text-sm font-extrabold text-white">장기목표 <span class="text-[11px] font-semibold text-white">(5y↑)</span></h2>
                         </div>
                         <div class="flex items-center gap-1.5">
                             <div class="w-16 sm:w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -247,7 +247,7 @@
                     <div class="shrink-0 px-3 py-1.5 bg-indigo-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
                         <div class="flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
-                            <h2 class="text-xs sm:text-sm font-extrabold text-indigo-200">중기목표 <span class="text-[11px] font-semibold text-indigo-400">(5y)</span></h2>
+                            <h2 class="text-xs sm:text-sm font-extrabold text-white">중기목표 <span class="text-[11px] font-semibold text-white">(5y)</span></h2>
                         </div>
                         <div class="flex items-center gap-1.5">
                             <div class="w-16 sm:w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -273,7 +273,7 @@
                     <div class="shrink-0 px-3 py-1.5 bg-sky-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
                         <div class="flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full bg-sky-400"></span>
-                            <h2 id="goal-title-year" class="text-xs sm:text-sm font-extrabold text-sky-200">2026년 올해목표</h2>
+                            <h2 id="goal-title-year" class="text-xs sm:text-sm font-extrabold text-white">2026년 올해목표</h2>
                         </div>
                         <div class="flex items-center gap-1.5">
                             <div class="w-16 sm:w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -294,12 +294,12 @@
                     </form>
                 </div>
 
-                <!-- 4. (올해의) 월별목표 -->
+                <!-- 4. (올해의) 월별목표 (1월~12월 가로 리스트) -->
                 <div class="min-h-[210px] md:min-h-0 flex flex-col rounded-xl sm:rounded-2xl bg-slate-900/95 border border-slate-800 overflow-hidden">
                     <div class="shrink-0 px-3 py-1.5 bg-emerald-950/35 border-b border-slate-800 flex items-center justify-between gap-2">
                         <div class="flex items-center gap-1.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                            <h2 id="goal-title-month" class="text-xs sm:text-sm font-extrabold text-emerald-200">2026년 11월 월별목표</h2>
+                            <h2 id="goal-title-month" class="text-xs sm:text-sm font-extrabold text-white">2026년 월별목표</h2>
                         </div>
                         <div class="flex items-center gap-1.5">
                             <div class="w-16 sm:w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -308,7 +308,7 @@
                             <span id="goal-rate-month" class="text-[11px] font-bold text-emerald-300 min-w-[34px] text-right">0%</span>
                         </div>
                     </div>
-                    <div id="goal-list-month" class="flex-1 min-h-0 overflow-y-auto p-2 space-y-1"></div>
+                    <div id="goal-list-month" class="flex-1 min-h-0 overflow-x-auto overflow-y-hidden p-2 flex flex-row gap-2"></div>
                     <form data-goal-scope="month" class="goal-add-form shrink-0 p-1.5 border-t border-slate-800 flex gap-1 bg-slate-900">
                         <select name="targetMonth" id="goal-month-select" aria-label="목표 월 선택"
                             class="px-1.5 py-1 text-[11px] font-semibold bg-slate-800 text-emerald-200 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-400 cursor-pointer shrink-0">
@@ -1626,8 +1626,7 @@
         function getGoalsForScope(scope) {
             return state.goals.filter(g => {
                 if (g.scope !== scope) return false;
-                if (scope === 'year') return g.year === state.currentYear;
-                if (scope === 'month') return g.year === state.currentYear && g.month === state.currentMonth;
+                if (scope === 'year' || scope === 'month') return g.year === state.currentYear;
                 return true;
             });
         }
@@ -1772,7 +1771,7 @@
 
             if (headerTitle) headerTitle.textContent = `${state.currentYear}년 목표 로드맵`;
             if (yearTitle) yearTitle.textContent = `${state.currentYear}년 올해목표`;
-            if (monthTitle) monthTitle.textContent = `${state.currentYear}년 ${state.currentMonth + 1}월 월별목표`;
+            if (monthTitle) monthTitle.textContent = `${state.currentYear}년 월별목표`;
 
             if (monthSelect) {
                 if (monthSelect.options.length !== 12) {
@@ -1784,8 +1783,8 @@
                         opt.className = 'bg-slate-800 text-slate-100';
                         monthSelect.appendChild(opt);
                     }
+                    monthSelect.value = new Date().getMonth();
                 }
-                monthSelect.value = state.currentMonth;
             }
 
             renderGoalsCategoryFilter();
@@ -1821,7 +1820,7 @@
                     rateId: 'goal-rate-month',
                     barId: 'goal-bar-month',
                     badgeCls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-                    emptyText: `${state.currentMonth + 1}월 월별목표가 없습니다.`
+                    emptyText: `${state.currentYear}년 월별목표가 없습니다.`
                 }
             ];
 
@@ -1850,6 +1849,52 @@
                 if (barEl) barEl.style.width = `${percent}%`;
 
                 listEl.innerHTML = '';
+
+                if (meta.scope === 'month') {
+                    const now = new Date();
+                    const isThisYear = state.currentYear === now.getFullYear();
+                    const thisMonth = now.getMonth();
+
+                    for (let m = 0; m < 12; m++) {
+                        const monthItems = items.filter(g => Number(g.month) === m);
+                        const isCurrentMonthCol = isThisYear && m === thisMonth;
+
+                        const col = document.createElement('div');
+                        col.className = `w-44 sm:w-48 shrink-0 h-full min-h-0 flex flex-col rounded-xl border overflow-hidden ${
+                            isCurrentMonthCol
+                                ? 'bg-emerald-950/30 border-emerald-400/70'
+                                : 'bg-slate-800/45 border-slate-800'
+                        }`;
+
+                        const colHeader = document.createElement('div');
+                        colHeader.className = `shrink-0 px-2 py-1 border-b flex items-center justify-between ${
+                            isCurrentMonthCol
+                                ? 'bg-emerald-900/35 border-emerald-500/30'
+                                : 'bg-slate-800/70 border-slate-700/60'
+                        }`;
+                        const mDone = monthItems.filter(g => g.completed).length;
+                        colHeader.innerHTML = `
+                            <span class="text-[11px] font-extrabold text-white">${m + 1}월</span>
+                            <span class="text-[10px] font-semibold text-emerald-300">${monthItems.length > 0 ? `${mDone}/${monthItems.length}` : '0'}</span>
+                        `;
+
+                        const colBody = document.createElement('div');
+                        colBody.className = 'flex-1 min-h-0 overflow-y-auto p-1.5 space-y-1';
+                        if (monthItems.length === 0) {
+                            colBody.innerHTML = `<div class="h-full flex items-center justify-center text-[10px] text-slate-600 py-3">목표 없음</div>`;
+                        } else {
+                            monthItems.forEach(g => {
+                                colBody.appendChild(createGoalRowElement(g, meta.badgeCls));
+                            });
+                        }
+
+                        col.appendChild(colHeader);
+                        col.appendChild(colBody);
+                        listEl.appendChild(col);
+                    }
+                    return;
+                }
+
                 if (items.length === 0) {
                     listEl.innerHTML = `<div class="h-full flex items-center justify-center text-xs text-slate-600 text-center py-4">${escapeHTML(meta.emptyText)}</div>`;
                 } else {
@@ -2499,24 +2544,10 @@
                     const monthSel = form.querySelector('select[name="targetMonth"]');
                     if (!textInput || !textInput.value.trim()) return;
                     const chosenMonth = monthSel ? Number(monthSel.value) : null;
-                    if (scope === 'month' && chosenMonth !== null && !Number.isNaN(chosenMonth)) {
-                        state.currentMonth = chosenMonth;
-                    }
                     addGoalItem(scope, catInput ? catInput.value : '일반', textInput.value, chosenMonth);
                     textInput.value = '';
                 });
             });
-
-            const goalMonthSelectEl = document.getElementById('goal-month-select');
-            if (goalMonthSelectEl) {
-                goalMonthSelectEl.addEventListener('change', (e) => {
-                    const m = Number(e.target.value);
-                    if (!Number.isNaN(m)) {
-                        state.currentMonth = m;
-                        renderAll();
-                    }
-                });
-            }
 
             const exportGoalsImgBtn = document.getElementById('btn-export-goals-image');
             if (exportGoalsImgBtn) {
@@ -2567,6 +2598,9 @@
             });
 
             document.getElementById('tab-monthly').addEventListener('click', () => {
+                const now = new Date();
+                state.currentYear = now.getFullYear();
+                state.currentMonth = now.getMonth();
                 state.viewMode = 'monthly';
                 localStorage.setItem(VIEW_STATE_KEY, 'monthly');
                 renderAll();
